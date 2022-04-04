@@ -1,0 +1,28 @@
+From 8278aabd7e8a85327973e770aafdffb7e767f32e Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 13 Jun 2021 23:46:04 -0500
+Subject: [PATCH 106/124] soc: sunxi: sram: Fix debugfs for A64 SRAM C
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/soc/sunxi/sunxi_sram.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/soc/sunxi/sunxi_sram.c b/drivers/soc/sunxi/sunxi_sram.c
+index a82351220c04..8b5356ef04be 100644
+--- a/drivers/soc/sunxi/sunxi_sram.c
++++ b/drivers/soc/sunxi/sunxi_sram.c
+@@ -82,8 +82,8 @@ static struct sunxi_sram_desc sun4i_a10_sram_d = {
+ 
+ static struct sunxi_sram_desc sun50i_a64_sram_c = {
+ 	.data	= SUNXI_SRAM_DATA("C", 0x4, 24, 1,
+-				  SUNXI_SRAM_MAP(0, 1, "cpu"),
+-				  SUNXI_SRAM_MAP(1, 0, "de2")),
++				  SUNXI_SRAM_MAP(1, 0, "cpu"),
++				  SUNXI_SRAM_MAP(0, 1, "de2")),
+ };
+ 
+ static const struct of_device_id sunxi_sram_dt_ids[] = {
+-- 
+2.20.1
+

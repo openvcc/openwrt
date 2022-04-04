@@ -1,0 +1,26 @@
+From 121b5566f4642b44b396a3221b6a3cfdfdf46f7d Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Mon, 31 May 2021 21:51:03 -0500
+Subject: [PATCH 100/124] rtc: sun6i: Add Allwinner D1 support
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/rtc/rtc-sun6i.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/rtc/rtc-sun6i.c b/drivers/rtc/rtc-sun6i.c
+index e067082df356..c966dea4394e 100644
+--- a/drivers/rtc/rtc-sun6i.c
++++ b/drivers/rtc/rtc-sun6i.c
+@@ -774,6 +774,8 @@ static const struct of_device_id sun6i_rtc_dt_ids[] = {
+ 	{ .compatible = "allwinner,sun50i-h6-rtc" },
+ 	{ .compatible = "allwinner,sun50i-h616-rtc",
+ 		.data = (void *)RTC_LINEAR_DAY },
++	{ .compatible = "allwinner,sun20i-d1-rtc",
++		.data = (void *)RTC_LINEAR_DAY },
+ 	{ /* sentinel */ },
+ };
+ MODULE_DEVICE_TABLE(of, sun6i_rtc_dt_ids);
+-- 
+2.20.1
+

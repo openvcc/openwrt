@@ -1,0 +1,68 @@
+From fa878b2c67b76258b85b00af41e46ec205720be0 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 16 May 2021 19:56:23 -0500
+Subject: [PATCH 090/124] pinctrl: sunxi: Support new 2.5V I/O bias mode
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/pinctrl/sunxi/pinctrl-sunxi.c | 11 +++++++++++
+ drivers/pinctrl/sunxi/pinctrl-sunxi.h |  7 +++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/drivers/pinctrl/sunxi/pinctrl-sunxi.c b/drivers/pinctrl/sunxi/pinctrl-sunxi.c
+index 862c84efb718..8a9c0ee98d8e 100644
+--- a/drivers/pinctrl/sunxi/pinctrl-sunxi.c
++++ b/drivers/pinctrl/sunxi/pinctrl-sunxi.c
+@@ -654,6 +654,16 @@ static int sunxi_pinctrl_set_io_bias_cfg(struct sunxi_pinctrl *pctl,
+ 		reg &= ~IO_BIAS_MASK;
+ 		writel(reg | val, pctl->membase + sunxi_grp_config_reg(pin));
+ 		return 0;
++	case BIAS_VOLTAGE_PIO_POW_MODE_CTL:
++		val = 1800000 < uV && uV <= 2500000 ? BIT(bank) : 0;
++
++		raw_spin_lock_irqsave(&pctl->lock, flags);
++		reg = readl(pctl->membase + PIO_POW_MOD_CTL_REG);
++		reg &= ~BIT(bank);
++		writel(reg | val, pctl->membase + PIO_POW_MOD_CTL_REG);
++		raw_spin_unlock_irqrestore(&pctl->lock, flags);
++
++		fallthrough;
+ 	case BIAS_VOLTAGE_PIO_POW_MODE_SEL:
+ 		val = uV <= 1800000 ? 1 : 0;
+ 
+@@ -662,6 +672,7 @@ static int sunxi_pinctrl_set_io_bias_cfg(struct sunxi_pinctrl *pctl,
+ 		reg &= ~(1 << bank);
+ 		writel(reg | val << bank, pctl->membase + PIO_POW_MOD_SEL_REG);
+ 		raw_spin_unlock_irqrestore(&pctl->lock, flags);
++
+ 		return 0;
+ 	default:
+ 		return -EINVAL;
+diff --git a/drivers/pinctrl/sunxi/pinctrl-sunxi.h b/drivers/pinctrl/sunxi/pinctrl-sunxi.h
+index a32bb5bcb754..0f1aab58650c 100644
+--- a/drivers/pinctrl/sunxi/pinctrl-sunxi.h
++++ b/drivers/pinctrl/sunxi/pinctrl-sunxi.h
+@@ -98,6 +98,7 @@
+ #define PINCTRL_SUN8I_V3S	BIT(10)
+ 
+ #define PIO_POW_MOD_SEL_REG	0x340
++#define PIO_POW_MOD_CTL_REG	0x344
+ 
+ enum sunxi_desc_bias_voltage {
+ 	BIAS_VOLTAGE_NONE,
+@@ -111,6 +112,12 @@ enum sunxi_desc_bias_voltage {
+ 	 * register, as seen on H6 SoC, for example.
+ 	 */
+ 	BIAS_VOLTAGE_PIO_POW_MODE_SEL,
++	/*
++	 * Bias voltage is set through PIO_POW_MOD_SEL_REG
++	 * and PIO_POW_MOD_CTL_REG register, as seen on
++	 * A100 and D1 SoC, for example.
++	 */
++	BIAS_VOLTAGE_PIO_POW_MODE_CTL,
+ };
+ 
+ struct sunxi_desc_function {
+-- 
+2.20.1
+

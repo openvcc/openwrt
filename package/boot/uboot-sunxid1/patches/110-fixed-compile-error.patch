@@ -1,0 +1,22 @@
+--- a/tools/sunxi_toc1.c
++++ b/tools/sunxi_toc1.c
+@@ -10,6 +10,8 @@
+ #include <stdlib.h>
+ #include <string.h>
+ 
++#include <bsd/stdlib.h>
++
+ #include <image.h>
+ #include <sunxi_image.h>
+ 
+--- a/tools/Makefile
++++ b/tools/Makefile
+@@ -178,6 +178,8 @@ HOSTCFLAGS_rsa-sign.o += -Wno-deprecated
+ endif
+ endif
+ 
++HOSTLDLIBS_mkimage += -lbsd
++
+ HOSTCFLAGS_fit_image.o += -DMKIMAGE_DTC=\"$(CONFIG_MKIMAGE_DTC_PATH)\"
+ 
+ HOSTLDLIBS_dumpimage := $(HOSTLDLIBS_mkimage)

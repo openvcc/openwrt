@@ -1,0 +1,29 @@
+From 307dad7755974e3712d87b08972bff67ac9ce652 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Wed, 23 Jun 2021 19:29:37 -0500
+Subject: [PATCH 016/124] thermal: sun8i: Set the event type for new samples
+
+Currently, an IRQ is only configured to trigger when a new sample is
+available. So report this event type to the thermal core.
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/thermal/sun8i_thermal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/thermal/sun8i_thermal.c b/drivers/thermal/sun8i_thermal.c
+index f05e70e280dd..ddd21ef4e3eb 100644
+--- a/drivers/thermal/sun8i_thermal.c
++++ b/drivers/thermal/sun8i_thermal.c
+@@ -192,7 +192,7 @@ static irqreturn_t sun8i_irq_thread(int irq, void *data)
+ 
+ 	for_each_set_bit(i, &irq_bitmap, tmdev->chip->sensor_num) {
+ 		thermal_zone_device_update(tmdev->sensor[i].tzd,
+-					   THERMAL_EVENT_UNSPECIFIED);
++					   THERMAL_EVENT_TEMP_SAMPLE);
+ 	}
+ 
+ 	return IRQ_HANDLED;
+-- 
+2.20.1
+

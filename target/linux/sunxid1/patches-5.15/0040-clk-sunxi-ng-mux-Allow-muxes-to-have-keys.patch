@@ -1,0 +1,63 @@
+From 88f4f9b057dda3d521fb13d7a7fbd09cf95fda41 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Thu, 20 May 2021 00:07:32 -0500
+Subject: [PATCH 040/124] clk: sunxi-ng: mux: Allow muxes to have keys
+
+The muxes in the RTC can only be updated when setting a key field to a
+specific value. Add a feature flag to denote muxes with this property.
+
+Since so far the key value is always the same, it does not need to be
+provided separately for each mux.
+
+Series-changes: 3
+ - Drop the SUNXI_CCU_MUX_HW_WITH_KEY macro, since it is no longer used.
+
+Cover-changes: 3
+ - Also drop the patch adding the SUNXI_CCU_MUX_DATA_WITH_GATE macro.
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/clk/sunxi-ng/ccu_common.h | 1 +
+ drivers/clk/sunxi-ng/ccu_mux.c    | 7 +++++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/drivers/clk/sunxi-ng/ccu_common.h b/drivers/clk/sunxi-ng/ccu_common.h
+index 98a1834b58bb..fbf16c6b896d 100644
+--- a/drivers/clk/sunxi-ng/ccu_common.h
++++ b/drivers/clk/sunxi-ng/ccu_common.h
+@@ -17,6 +17,7 @@
+ #define CCU_FEATURE_LOCK_REG		BIT(5)
+ #define CCU_FEATURE_MMC_TIMING_SWITCH	BIT(6)
+ #define CCU_FEATURE_SIGMA_DELTA_MOD	BIT(7)
++#define CCU_FEATURE_KEY_FIELD		BIT(8)
+ 
+ /* MMC timing mode switch bit */
+ #define CCU_MMC_NEW_TIMING_MODE		BIT(30)
+diff --git a/drivers/clk/sunxi-ng/ccu_mux.c b/drivers/clk/sunxi-ng/ccu_mux.c
+index 2306a1cd83e4..1d557e323169 100644
+--- a/drivers/clk/sunxi-ng/ccu_mux.c
++++ b/drivers/clk/sunxi-ng/ccu_mux.c
+@@ -12,6 +12,8 @@
+ #include "ccu_gate.h"
+ #include "ccu_mux.h"
+ 
++#define CCU_MUX_KEY_VALUE		0x16aa0000
++
+ static u16 ccu_mux_get_prediv(struct ccu_common *common,
+ 			      struct ccu_mux_internal *cm,
+ 			      int parent_index)
+@@ -191,6 +193,11 @@ int ccu_mux_helper_set_parent(struct ccu_common *common,
+ 	spin_lock_irqsave(common->lock, flags);
+ 
+ 	reg = readl(common->base + common->reg);
++
++	/* The key field always reads as zero. */
++	if (common->features & CCU_FEATURE_KEY_FIELD)
++		reg |= CCU_MUX_KEY_VALUE;
++
+ 	reg &= ~GENMASK(cm->width + cm->shift - 1, cm->shift);
+ 	writel(reg | (index << cm->shift), common->base + common->reg);
+ 
+-- 
+2.20.1
+

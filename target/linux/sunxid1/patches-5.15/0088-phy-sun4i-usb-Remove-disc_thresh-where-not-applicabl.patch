@@ -1,0 +1,26 @@
+From 7aff4d9c913586d7d4ffe33f88c17d8d4d8302bd Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Wed, 23 Jun 2021 22:14:15 -0500
+Subject: [PATCH 088/124] phy: sun4i-usb: Remove disc_thresh where not
+ applicable
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/phy/allwinner/phy-sun4i-usb.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/phy/allwinner/phy-sun4i-usb.c b/drivers/phy/allwinner/phy-sun4i-usb.c
+index 142f4cafdc78..6675dad17415 100644
+--- a/drivers/phy/allwinner/phy-sun4i-usb.c
++++ b/drivers/phy/allwinner/phy-sun4i-usb.c
+@@ -958,7 +958,6 @@ static const struct sun4i_usb_phy_cfg sun50i_a64_cfg = {
+ static const struct sun4i_usb_phy_cfg sun50i_h6_cfg = {
+ 	.num_phys = 4,
+ 	.type = sun50i_h6_phy,
+-	.disc_thresh = 3,
+ 	.phyctl_offset = REG_PHYCTL_A33,
+ 	.dedicated_clocks = true,
+ 	.phy0_dual_route = true,
+-- 
+2.20.1
+

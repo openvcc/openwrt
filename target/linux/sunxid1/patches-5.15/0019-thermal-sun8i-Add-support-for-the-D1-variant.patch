@@ -1,0 +1,46 @@
+From 9e6cbc170439341082c5dfc36ac2d47a621152f2 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 6 Jun 2021 10:05:08 -0500
+Subject: [PATCH 019/124] thermal: sun8i: Add support for the D1 variant
+
+D1 has a thermal sensor block like other SoCs in the H6 generation.
+It has a single sensor channel and a unique temperature formula.
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/thermal/sun8i_thermal.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/drivers/thermal/sun8i_thermal.c b/drivers/thermal/sun8i_thermal.c
+index fa88fd91f997..1994e503bf15 100644
+--- a/drivers/thermal/sun8i_thermal.c
++++ b/drivers/thermal/sun8i_thermal.c
+@@ -579,6 +579,17 @@ static const struct ths_thermal_chip sun8i_r40_ths = {
+ 	.calc_temp = sun8i_ths_calc_temp,
+ };
+ 
++static const struct ths_thermal_chip sun20i_d1_ths = {
++	.sensor_num = 1,
++	.offset = 188147,
++	.scale = 672,
++	.temp_data_base = SUN50I_H6_THS_TEMP_DATA,
++	.calibrate = sun50i_h6_ths_calibrate,
++	.init = sun50i_h6_thermal_init,
++	.irq_ack = sun50i_h6_irq_ack,
++	.calc_temp = sun8i_ths_calc_temp,
++};
++
+ static const struct ths_thermal_chip sun50i_a64_ths = {
+ 	.sensor_num = 3,
+ 	.offset = 260890,
+@@ -627,6 +638,7 @@ static const struct of_device_id of_ths_match[] = {
+ 	{ .compatible = "allwinner,sun8i-a83t-ths", .data = &sun8i_a83t_ths },
+ 	{ .compatible = "allwinner,sun8i-h3-ths", .data = &sun8i_h3_ths },
+ 	{ .compatible = "allwinner,sun8i-r40-ths", .data = &sun8i_r40_ths },
++	{ .compatible = "allwinner,sun20i-d1-ths", .data = &sun20i_d1_ths },
+ 	{ .compatible = "allwinner,sun50i-a64-ths", .data = &sun50i_a64_ths },
+ 	{ .compatible = "allwinner,sun50i-a100-ths", .data = &sun50i_a100_ths },
+ 	{ .compatible = "allwinner,sun50i-h5-ths", .data = &sun50i_h5_ths },
+-- 
+2.20.1
+

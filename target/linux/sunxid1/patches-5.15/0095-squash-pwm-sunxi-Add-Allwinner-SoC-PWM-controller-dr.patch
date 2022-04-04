@@ -1,0 +1,50 @@
+From 526751701c01331fb898334df5f491a2b10bc9b1 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 6 Jun 2021 11:05:20 -0500
+Subject: [PATCH 095/124] squash? pwm: sunxi: Add Allwinner SoC PWM controller
+ driver
+
+---
+ drivers/pwm/Kconfig          | 4 ++--
+ drivers/pwm/pwm-sun8i-v536.c | 6 +-----
+ 2 files changed, 3 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/pwm/Kconfig b/drivers/pwm/Kconfig
+index e31884525081..f956bb0a65bf 100644
+--- a/drivers/pwm/Kconfig
++++ b/drivers/pwm/Kconfig
+@@ -571,11 +571,11 @@ config PWM_SUN4I
+ 	  will be called pwm-sun4i.
+ 
+ config PWM_SUN8I_V536
+-	tristate "Allwinner SUN8I_V536 PWM support"
++	tristate "Allwinner SUN8I V536 enhanced PWM support"
+ 	depends on ARCH_SUNXI || COMPILE_TEST
+ 	depends on HAS_IOMEM && COMMON_CLK
+ 	help
+-	  Enhanced PWM framework driver for Allwinner R818, A133, R329,
++	  Enhanced PWM framework driver for Allwinner A133, D1, R329, R818,
+ 	  V536 and V833 SoCs.
+ 
+ 	  To compile this driver as a module, choose M here: the module
+diff --git a/drivers/pwm/pwm-sun8i-v536.c b/drivers/pwm/pwm-sun8i-v536.c
+index 52101df6bd41..ab302c6cb4ee 100644
+--- a/drivers/pwm/pwm-sun8i-v536.c
++++ b/drivers/pwm/pwm-sun8i-v536.c
+@@ -373,12 +373,8 @@ static int sun8i_pwm_probe(struct platform_device *pdev)
+ static int sun8i_pwm_remove(struct platform_device *pdev)
+ {
+ 	struct sun8i_pwm_chip *pc = platform_get_drvdata(pdev);
+-	int ret;
+-
+-	ret = pwmchip_remove(&pc->chip);
+-	if (ret)
+-		return ret;
+ 
++	pwmchip_remove(&pc->chip);
+ 	clk_disable_unprepare(pc->clk);
+ 	reset_control_assert(pc->rst_clk);
+ 
+-- 
+2.20.1
+

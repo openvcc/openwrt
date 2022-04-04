@@ -1,0 +1,28 @@
+From a456c9424e9a3b092e2c8ad6e41b6f41c1a89b4f Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 13 Jun 2021 23:46:45 -0500
+Subject: [PATCH 108/124] soc: sunxi: sram: Add D1 syscon variant
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/soc/sunxi/sunxi_sram.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/soc/sunxi/sunxi_sram.c b/drivers/soc/sunxi/sunxi_sram.c
+index 49d5ba9f74ba..3f6118998f4e 100644
+--- a/drivers/soc/sunxi/sunxi_sram.c
++++ b/drivers/soc/sunxi/sunxi_sram.c
+@@ -478,6 +478,10 @@ static const struct of_device_id sunxi_sram_dt_match[] = {
+ 		.compatible = "allwinner,sun8i-h3-system-control",
+ 		.data = &sun8i_h3_sramc_variant,
+ 	},
++	{
++		.compatible = "allwinner,sun20i-d1-system-control",
++		.data = &sun20i_d1_sramc_variant,
++	},
+ 	{
+ 		.compatible = "allwinner,sun50i-a64-sram-controller",
+ 		.data = &sun50i_a64_sramc_variant,
+-- 
+2.20.1
+

@@ -1,0 +1,51 @@
+From 0d32a8415787d2833c67d4710bba4eb264abd13c Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 16 May 2021 14:06:19 -0500
+Subject: [PATCH 091/124] pinctrl: sunxi: Adapt for D1 register layout
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/pinctrl/sunxi/pinctrl-sunxi.h | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/pinctrl/sunxi/pinctrl-sunxi.h b/drivers/pinctrl/sunxi/pinctrl-sunxi.h
+index 0f1aab58650c..8ebba0ab5f69 100644
+--- a/drivers/pinctrl/sunxi/pinctrl-sunxi.h
++++ b/drivers/pinctrl/sunxi/pinctrl-sunxi.h
+@@ -34,11 +34,11 @@
+ 
+ #define SUNXI_PIN_NAME_MAX_LEN	5
+ 
+-#define BANK_MEM_SIZE		0x24
++#define BANK_MEM_SIZE		0x30
+ #define MUX_REGS_OFFSET		0x0
+ #define DATA_REGS_OFFSET	0x10
+ #define DLEVEL_REGS_OFFSET	0x14
+-#define PULL_REGS_OFFSET	0x1c
++#define PULL_REGS_OFFSET	0x24
+ 
+ #define PINS_PER_BANK		32
+ #define MUX_PINS_PER_REG	8
+@@ -47,8 +47,8 @@
+ #define DATA_PINS_PER_REG	32
+ #define DATA_PINS_BITS		1
+ #define DATA_PINS_MASK		0x01
+-#define DLEVEL_PINS_PER_REG	16
+-#define DLEVEL_PINS_BITS	2
++#define DLEVEL_PINS_PER_REG	8
++#define DLEVEL_PINS_BITS	4
+ #define DLEVEL_PINS_MASK	0x03
+ #define PULL_PINS_PER_REG	16
+ #define PULL_PINS_BITS		2
+@@ -84,7 +84,7 @@
+ #define IO_BIAS_MASK		GENMASK(3, 0)
+ 
+ #define SUN4I_FUNC_INPUT	0
+-#define SUN4I_FUNC_IRQ		6
++#define SUN4I_FUNC_IRQ		0xe
+ 
+ #define PINCTRL_SUN5I_A10S	BIT(1)
+ #define PINCTRL_SUN5I_A13	BIT(2)
+-- 
+2.20.1
+

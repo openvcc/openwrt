@@ -1,0 +1,148 @@
+From cdbe9f3ed5fd2fa0395f317b81e653781c768d7e Mon Sep 17 00:00:00 2001
+From: Vitaly Wool <vitaly.wool@konsulko.com>
+Date: Mon, 11 Oct 2021 11:14:14 +0200
+Subject: [PATCH 005/124] riscv: remove .text section size limitation for XIP
+
+Currently there's a limit of 8MB for the .text section of a RISC-V
+image in the XIP case. This breaks compilation of many automatic
+builds and is generally inconvenient. This patch removes that
+limitation and optimizes XIP image file size at the same time.
+
+Signed-off-by: Vitaly Wool <vitaly.wool@konsulko.com>
+Signed-off-by: Palmer Dabbelt <palmerdabbelt@google.com>
+---
+ arch/riscv/include/asm/pgtable.h    |  6 ++++--
+ arch/riscv/kernel/head.S            | 12 ++++++++++++
+ arch/riscv/kernel/vmlinux-xip.lds.S | 10 +++++++---
+ arch/riscv/mm/init.c                |  7 +++----
+ 4 files changed, 26 insertions(+), 9 deletions(-)
+
+diff --git a/arch/riscv/include/asm/pgtable.h b/arch/riscv/include/asm/pgtable.h
+index 39b550310ec6..bf204e7c1f74 100644
+--- a/arch/riscv/include/asm/pgtable.h
++++ b/arch/riscv/include/asm/pgtable.h
+@@ -75,7 +75,8 @@
+ #endif
+ 
+ #ifdef CONFIG_XIP_KERNEL
+-#define XIP_OFFSET		SZ_8M
++#define XIP_OFFSET		SZ_32M
++#define XIP_OFFSET_MASK		(SZ_32M - 1)
+ #else
+ #define XIP_OFFSET		0
+ #endif
+@@ -97,7 +98,8 @@
+ #ifdef CONFIG_XIP_KERNEL
+ #define XIP_FIXUP(addr) ({							\
+ 	uintptr_t __a = (uintptr_t)(addr);					\
+-	(__a >= CONFIG_XIP_PHYS_ADDR && __a < CONFIG_XIP_PHYS_ADDR + SZ_16M) ?	\
++	(__a >= CONFIG_XIP_PHYS_ADDR && \
++	 __a < CONFIG_XIP_PHYS_ADDR + XIP_OFFSET * 2) ?	\
+ 		__a - CONFIG_XIP_PHYS_ADDR + CONFIG_PHYS_RAM_BASE - XIP_OFFSET :\
+ 		__a;								\
+ 	})
+diff --git a/arch/riscv/kernel/head.S b/arch/riscv/kernel/head.S
+index 52c5ff9804c5..ebd577b51c5c 100644
+--- a/arch/riscv/kernel/head.S
++++ b/arch/riscv/kernel/head.S
+@@ -20,10 +20,20 @@
+ 	REG_L t0, _xip_fixup
+ 	add \reg, \reg, t0
+ .endm
++.macro XIP_FIXUP_FLASH_OFFSET reg
++	la t1, __data_loc
++	li t0, XIP_OFFSET_MASK
++	and t1, t1, t0
++	li t1, XIP_OFFSET
++	sub t0, t0, t1
++	sub \reg, \reg, t0
++.endm
+ _xip_fixup: .dword CONFIG_PHYS_RAM_BASE - CONFIG_XIP_PHYS_ADDR - XIP_OFFSET
+ #else
+ .macro XIP_FIXUP_OFFSET reg
+ .endm
++.macro XIP_FIXUP_FLASH_OFFSET reg
++.endm
+ #endif /* CONFIG_XIP_KERNEL */
+ 
+ __HEAD
+@@ -267,6 +277,7 @@ pmp_done:
+ 	la a3, hart_lottery
+ 	mv a2, a3
+ 	XIP_FIXUP_OFFSET a2
++	XIP_FIXUP_FLASH_OFFSET a3
+ 	lw t1, (a3)
+ 	amoswap.w t0, t1, (a2)
+ 	/* first time here if hart_lottery in RAM is not set */
+@@ -305,6 +316,7 @@ clear_bss_done:
+ 	XIP_FIXUP_OFFSET sp
+ #ifdef CONFIG_BUILTIN_DTB
+ 	la a0, __dtb_start
++	XIP_FIXUP_OFFSET a0
+ #else
+ 	mv a0, s1
+ #endif /* CONFIG_BUILTIN_DTB */
+diff --git a/arch/riscv/kernel/vmlinux-xip.lds.S b/arch/riscv/kernel/vmlinux-xip.lds.S
+index 9c9f35091ef0..f5ed08262139 100644
+--- a/arch/riscv/kernel/vmlinux-xip.lds.S
++++ b/arch/riscv/kernel/vmlinux-xip.lds.S
+@@ -64,8 +64,11 @@ SECTIONS
+ /*
+  * From this point, stuff is considered writable and will be copied to RAM
+  */
+-	__data_loc = ALIGN(16);		/* location in file */
+-	. = LOAD_OFFSET + XIP_OFFSET;	/* location in memory */
++	__data_loc = ALIGN(PAGE_SIZE);		/* location in file */
++	. = KERNEL_LINK_ADDR + XIP_OFFSET;	/* location in memory */
++
++#undef LOAD_OFFSET
++#define LOAD_OFFSET (KERNEL_LINK_ADDR + XIP_OFFSET - (__data_loc & XIP_OFFSET_MASK))
+ 
+ 	_sdata = .;			/* Start of data section */
+ 	_data = .;
+@@ -96,7 +99,6 @@ SECTIONS
+ 		KEEP(*(__soc_builtin_dtb_table))
+ 		__soc_builtin_dtb_table_end = .;
+ 	}
+-	PERCPU_SECTION(L1_CACHE_BYTES)
+ 
+ 	. = ALIGN(8);
+ 	.alternative : {
+@@ -122,6 +124,8 @@ SECTIONS
+ 
+ 	BSS_SECTION(PAGE_SIZE, PAGE_SIZE, 0)
+ 
++	PERCPU_SECTION(L1_CACHE_BYTES)
++
+ 	.rel.dyn : AT(ADDR(.rel.dyn) - LOAD_OFFSET) {
+ 		*(.rel.dyn*)
+ 	}
+diff --git a/arch/riscv/mm/init.c b/arch/riscv/mm/init.c
+index c0cddf0fc22d..24b2b8044602 100644
+--- a/arch/riscv/mm/init.c
++++ b/arch/riscv/mm/init.c
+@@ -41,7 +41,7 @@ phys_addr_t phys_ram_base __ro_after_init;
+ EXPORT_SYMBOL(phys_ram_base);
+ 
+ #ifdef CONFIG_XIP_KERNEL
+-extern char _xiprom[], _exiprom[];
++extern char _xiprom[], _exiprom[], __data_loc;
+ #endif
+ 
+ unsigned long empty_zero_page[PAGE_SIZE / sizeof(unsigned long)]
+@@ -454,10 +454,9 @@ static uintptr_t __init best_map_size(phys_addr_t base, phys_addr_t size)
+ /* called from head.S with MMU off */
+ asmlinkage void __init __copy_data(void)
+ {
+-	void *from = (void *)(&_sdata);
+-	void *end = (void *)(&_end);
++	void *from = (void *)(&__data_loc);
+ 	void *to = (void *)CONFIG_PHYS_RAM_BASE;
+-	size_t sz = (size_t)(end - from + 1);
++	size_t sz = (size_t)((uintptr_t)(&_end) - (uintptr_t)(&_sdata));
+ 
+ 	memcpy(to, from, sz);
+ }
+-- 
+2.20.1
+

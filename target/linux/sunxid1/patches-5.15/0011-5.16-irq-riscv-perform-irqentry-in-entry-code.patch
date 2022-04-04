@@ -1,0 +1,96 @@
+From ef1f47034f47324dfdb12e97253401438a9ff18d Mon Sep 17 00:00:00 2001
+From: Mark Rutland <mark.rutland@arm.com>
+Date: Wed, 20 Oct 2021 11:33:49 +0100
+Subject: [PATCH 011/124] irq: riscv: perform irqentry in entry code
+
+In preparation for removing HANDLE_DOMAIN_IRQ_IRQENTRY, have arch/riscv
+perform all the irqentry accounting in its entry code. As arch/riscv
+uses GENERIC_IRQ_MULTI_HANDLER, we can use generic_handle_arch_irq() to
+do so.
+
+Since generic_handle_arch_irq() handles the irq entry and setting the
+irq regs, and happens before the irqchip code calls handle_IPI(), we can
+remove the redundant irq entry and irq regs manipulation from
+handle_IPI().
+
+There should be no functional change as a result of this patch.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+Reviewed-by: Guo Ren <guoren@kernel.org>
+Reviewed-by: Marc Zyngier <maz@kernel.org>
+Cc: Albert Ou <aou@eecs.berkeley.edu>
+Cc: Palmer Dabbelt <palmer@dabbelt.com>
+Cc: Paul Walmsley <paul.walmsley@sifive.com>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+---
+ arch/riscv/Kconfig        | 1 -
+ arch/riscv/kernel/entry.S | 3 +--
+ arch/riscv/kernel/smp.c   | 9 +--------
+ 3 files changed, 2 insertions(+), 11 deletions(-)
+
+diff --git a/arch/riscv/Kconfig b/arch/riscv/Kconfig
+index ff159d5eb33e..f076cee11af6 100644
+--- a/arch/riscv/Kconfig
++++ b/arch/riscv/Kconfig
+@@ -63,7 +63,6 @@ config RISCV
+ 	select GENERIC_SMP_IDLE_THREAD
+ 	select GENERIC_TIME_VSYSCALL if MMU && 64BIT
+ 	select HANDLE_DOMAIN_IRQ
+-	select HANDLE_DOMAIN_IRQ_IRQENTRY
+ 	select HAVE_ARCH_AUDITSYSCALL
+ 	select HAVE_ARCH_JUMP_LABEL if !XIP_KERNEL
+ 	select HAVE_ARCH_JUMP_LABEL_RELATIVE if !XIP_KERNEL
+diff --git a/arch/riscv/kernel/entry.S b/arch/riscv/kernel/entry.S
+index 98f502654edd..64236f7efde5 100644
+--- a/arch/riscv/kernel/entry.S
++++ b/arch/riscv/kernel/entry.S
+@@ -130,8 +130,7 @@ skip_context_tracking:
+ 
+ 	/* Handle interrupts */
+ 	move a0, sp /* pt_regs */
+-	la a1, handle_arch_irq
+-	REG_L a1, (a1)
++	la a1, generic_handle_arch_irq
+ 	jr a1
+ 1:
+ 	/*
+diff --git a/arch/riscv/kernel/smp.c b/arch/riscv/kernel/smp.c
+index 921d9d7df400..2f6da845c9ae 100644
+--- a/arch/riscv/kernel/smp.c
++++ b/arch/riscv/kernel/smp.c
+@@ -140,12 +140,9 @@ void arch_irq_work_raise(void)
+ 
+ void handle_IPI(struct pt_regs *regs)
+ {
+-	struct pt_regs *old_regs = set_irq_regs(regs);
+ 	unsigned long *pending_ipis = &ipi_data[smp_processor_id()].bits;
+ 	unsigned long *stats = ipi_data[smp_processor_id()].stats;
+ 
+-	irq_enter();
+-
+ 	riscv_clear_ipi();
+ 
+ 	while (true) {
+@@ -156,7 +153,7 @@ void handle_IPI(struct pt_regs *regs)
+ 
+ 		ops = xchg(pending_ipis, 0);
+ 		if (ops == 0)
+-			goto done;
++			return;
+ 
+ 		if (ops & (1 << IPI_RESCHEDULE)) {
+ 			stats[IPI_RESCHEDULE]++;
+@@ -189,10 +186,6 @@ void handle_IPI(struct pt_regs *regs)
+ 		/* Order data access and bit testing. */
+ 		mb();
+ 	}
+-
+-done:
+-	irq_exit();
+-	set_irq_regs(old_regs);
+ }
+ 
+ static const char * const ipi_names[] = {
+-- 
+2.20.1
+

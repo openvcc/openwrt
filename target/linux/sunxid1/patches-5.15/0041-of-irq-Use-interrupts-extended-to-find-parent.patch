@@ -1,0 +1,59 @@
+From 442fb5f5b81fbf5535d77859af73d2c05c930956 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 13 Jun 2021 23:43:58 -0500
+Subject: [PATCH 041/124] of/irq: Use interrupts-extended to find parent
+
+Some OF irqchips, such as the RISC-V PLIC, use interrupts-extended to
+specify their parent domain(s). So that binding does not allow using the
+interrupt-parent property in the irqchip node. That prevents of_irq_init
+from properly detecting the irqchip hierarchy.
+
+If no interrupt-parent property is present in the enclosing bus or root
+node, then desc->interrupt_parent will be NULL for both the per-CPU
+RISC-V INTCs (the actual root domains) and the PLIC. Similarly, if the
+bus or root node specifies `interrupt-parent = <&plic>`, then
+of_irq_init will hit the `desc->interrupt_parent == np` check, and again
+all parents will be NULL. So things happen to work today for some boards
+due to Makefile ordering.
+
+However, things break when another irqchip (call it "foo") is stacked
+with the PLIC. The bus/root node will have `interrupt-parent = <&foo>`,
+since that is what all of the other peripherals need. When of_irq_init
+runs, it will try to find the PLIC's parent domain. But because
+of_irq_find_parent ignores interrupts-extended, it will fall back to the
+interrupt-parent of the PLIC's parent node (i.e. the bus or root node),
+and see "foo" as the PLIC's parent domain. But this is wrong, because
+"foo" is actually the PLIC's child domain!
+
+So of_irq_init wrongly attempts to init the stacked irqchip before the
+PLIC. This fails and prevents boot.
+
+Fix this by having of_irq_find_parent return the first node referenced
+by interrupts-extended when that property is present. Even if the
+property references multiple different IRQ domains, this will still work
+reliably in of_irq_init as long as all referenced domains are the same
+distance from some root domain (e.g. the RISC-V INTCs referenced by the
+PLIC are always all root domains).
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/of/irq.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/of/irq.c b/drivers/of/irq.c
+index 352e14b007e7..d84d27fb2203 100644
+--- a/drivers/of/irq.c
++++ b/drivers/of/irq.c
+@@ -60,7 +60,8 @@ struct device_node *of_irq_find_parent(struct device_node *child)
+ 		return NULL;
+ 
+ 	do {
+-		if (of_property_read_u32(child, "interrupt-parent", &parent)) {
++		if (of_property_read_u32(child, "interrupt-parent", &parent) &&
++		    of_property_read_u32(child, "interrupts-extended", &parent)) {
+ 			p = of_get_parent(child);
+ 		} else	{
+ 			if (of_irq_workarounds & OF_IMAP_NO_PHANDLE)
+-- 
+2.20.1
+

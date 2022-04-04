@@ -1,0 +1,272 @@
+From bbac293092123341e0eaa3905508e2264f6b1cec Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 13 Jun 2021 23:54:42 -0500
+Subject: [PATCH 121/124] misc changes
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ arch/riscv/Kconfig                    |  2 +-
+ arch/riscv/mm/physaddr.c              |  2 +-
+ drivers/mmc/host/sunxi-mmc.c          | 15 +++++++++++----
+ drivers/of/irq.c                      |  7 ++++---
+ drivers/pinctrl/sunxi/pinctrl-sunxi.c |  8 ++++++++
+ include/linux/dmaengine.h             |  2 +-
+ sound/soc/soc-core.c                  |  3 +++
+ sound/soc/soc-dapm.c                  |  2 +-
+ sound/soc/sunxi/Makefile              |  4 ++--
+ sound/soc/sunxi/sun4i-i2s.c           |  6 ------
+ sound/soc/sunxi/sun4i-spdif.c         | 11 +++++++++--
+ 11 files changed, 41 insertions(+), 21 deletions(-)
+
+diff --git a/arch/riscv/Kconfig b/arch/riscv/Kconfig
+index 5f11f14f93a8..b942ba3e8eae 100644
+--- a/arch/riscv/Kconfig
++++ b/arch/riscv/Kconfig
+@@ -261,7 +261,7 @@ config ARCH_RV64I
+ 	select HAVE_FTRACE_MCOUNT_RECORD if !XIP_KERNEL
+ 	select HAVE_FUNCTION_GRAPH_TRACER
+ 	select HAVE_FUNCTION_TRACER if !XIP_KERNEL
+-	select SWIOTLB if MMU
++	# select SWIOTLB if MMU
+ 
+ endchoice
+ 
+diff --git a/arch/riscv/mm/physaddr.c b/arch/riscv/mm/physaddr.c
+index e7fd0c253c7b..917d9868bb90 100644
+--- a/arch/riscv/mm/physaddr.c
++++ b/arch/riscv/mm/physaddr.c
+@@ -14,7 +14,7 @@ phys_addr_t __virt_to_phys(unsigned long x)
+ 	 * Boundary checking aginst the kernel linear mapping space.
+ 	 */
+ 	WARN(y >= KERN_VIRT_SIZE,
+-	     "virt_to_phys used for non-linear address: %pK (%pS)\n",
++	     "virt_to_phys used for non-linear address: %p (%pS)\n",
+ 	     (void *)x, (void *)x);
+ 
+ 	return __va_to_pa_nodebug(x);
+diff --git a/drivers/mmc/host/sunxi-mmc.c b/drivers/mmc/host/sunxi-mmc.c
+index e6a21bcc3b47..09a85de3e5f2 100644
+--- a/drivers/mmc/host/sunxi-mmc.c
++++ b/drivers/mmc/host/sunxi-mmc.c
+@@ -749,6 +749,17 @@ static int sunxi_mmc_calibrate(struct sunxi_mmc_host *host, int reg_off)
+ 	 */
+ 	writel(SDXC_CAL_DL_SW_EN, host->reg_base + reg_off);
+ 
++#if 0
++	writel(SDXC_CAL_START, host->reg_base + reg_off);
++
++	unsigned long expire = jiffies + msecs_to_jiffies(250);
++	u32 rval;
++
++	do {
++		rval = readl(host->reg_base + reg_off);
++	} while (time_before(jiffies, expire) && !(rval & SDXC_CAL_DONE));
++#endif
++
+ 	return 0;
+ }
+ 
+@@ -1211,7 +1222,6 @@ static const struct sunxi_mmc_cfg sun20i_d1_cfg = {
+ 
+ static const struct sunxi_mmc_cfg sun50i_a64_cfg = {
+ 	.idma_des_size_bits = 16,
+-	.clk_delays = NULL,
+ 	.can_calibrate = true,
+ 	.mask_data0 = true,
+ 	.needs_new_timings = true,
+@@ -1219,7 +1229,6 @@ static const struct sunxi_mmc_cfg sun50i_a64_cfg = {
+ 
+ static const struct sunxi_mmc_cfg sun50i_a64_emmc_cfg = {
+ 	.idma_des_size_bits = 13,
+-	.clk_delays = NULL,
+ 	.can_calibrate = true,
+ 	.needs_new_timings = true,
+ };
+@@ -1227,7 +1236,6 @@ static const struct sunxi_mmc_cfg sun50i_a64_emmc_cfg = {
+ static const struct sunxi_mmc_cfg sun50i_a100_cfg = {
+ 	.idma_des_size_bits = 16,
+ 	.idma_des_shift = 2,
+-	.clk_delays = NULL,
+ 	.can_calibrate = true,
+ 	.mask_data0 = true,
+ 	.needs_new_timings = true,
+@@ -1236,7 +1244,6 @@ static const struct sunxi_mmc_cfg sun50i_a100_cfg = {
+ static const struct sunxi_mmc_cfg sun50i_a100_emmc_cfg = {
+ 	.idma_des_size_bits = 13,
+ 	.idma_des_shift = 2,
+-	.clk_delays = NULL,
+ 	.can_calibrate = true,
+ 	.needs_new_timings = true,
+ };
+diff --git a/drivers/of/irq.c b/drivers/of/irq.c
+index d84d27fb2203..33878ffb9a49 100644
+--- a/drivers/of/irq.c
++++ b/drivers/of/irq.c
+@@ -511,6 +511,8 @@ void __init of_irq_init(const struct of_device_id *matches)
+ 		desc->interrupt_parent = of_irq_find_parent(np);
+ 		if (desc->interrupt_parent == np)
+ 			desc->interrupt_parent = NULL;
++		pr_notice("of_irq_init: found %pOF with parent %pOF\n",
++			  desc->dev, desc->interrupt_parent);
+ 		list_add_tail(&desc->list, &intc_desc_list);
+ 	}
+ 
+@@ -535,9 +537,8 @@ void __init of_irq_init(const struct of_device_id *matches)
+ 
+ 			of_node_set_flag(desc->dev, OF_POPULATED);
+ 
+-			pr_debug("of_irq_init: init %pOF (%p), parent %p\n",
+-				 desc->dev,
+-				 desc->dev, desc->interrupt_parent);
++			pr_notice("of_irq_init: init %pOF with parent %pOF\n",
++				  desc->dev, desc->interrupt_parent);
+ 			ret = desc->irq_init_cb(desc->dev,
+ 						desc->interrupt_parent);
+ 			if (ret) {
+diff --git a/drivers/pinctrl/sunxi/pinctrl-sunxi.c b/drivers/pinctrl/sunxi/pinctrl-sunxi.c
+index 8a9c0ee98d8e..d5814eaac183 100644
+--- a/drivers/pinctrl/sunxi/pinctrl-sunxi.c
++++ b/drivers/pinctrl/sunxi/pinctrl-sunxi.c
+@@ -10,6 +10,7 @@
+  * warranty of any kind, whether express or implied.
+  */
+ 
++#define DEBUG
+ #include <linux/io.h>
+ #include <linux/clk.h>
+ #include <linux/gpio/driver.h>
+@@ -1026,8 +1027,15 @@ static void sunxi_pinctrl_irq_ack(struct irq_data *d)
+ 	u32 status_reg = sunxi_irq_status_reg(pctl->desc, d->hwirq);
+ 	u8 status_idx = sunxi_irq_status_offset(d->hwirq);
+ 
++	u32 old = readl(pctl->membase + status_reg);
++
+ 	/* Clear the IRQ */
+ 	writel(1 << status_idx, pctl->membase + status_reg);
++
++	u32 new = readl(pctl->membase + status_reg);
++
++	pr_err("acked %ld in 0x%08x, was 0x%08x, now 0x%08x\n",
++		d->hwirq, status_reg, old, new);
+ }
+ 
+ static void sunxi_pinctrl_irq_mask(struct irq_data *d)
+diff --git a/include/linux/dmaengine.h b/include/linux/dmaengine.h
+index e5c2c9e71bf1..1a9072556c01 100644
+--- a/include/linux/dmaengine.h
++++ b/include/linux/dmaengine.h
+@@ -394,7 +394,7 @@ enum dma_slave_buswidth {
+  * should be read (RX), if the source is memory this argument is
+  * ignored.
+  * @dst_addr: this is the physical address where DMA slave data
+- * should be written (TX), if the source is memory this argument
++ * should be written (TX), if the destination is memory this argument
+  * is ignored.
+  * @src_addr_width: this is the width in bytes of the source (RX)
+  * register where DMA data shall be read. If the source
+diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
+index 80ca260595fd..21ec90b1901a 100644
+--- a/sound/soc/soc-core.c
++++ b/sound/soc/soc-core.c
+@@ -17,6 +17,7 @@
+ //   o Add more codecs and platforms to ensure good API coverage.
+ //   o Support TDM on PCM and I2S
+ 
++#define DEBUG
+ #include <linux/module.h>
+ #include <linux/moduleparam.h>
+ #include <linux/init.h>
+@@ -1042,6 +1043,8 @@ int snd_soc_add_pcm_runtime(struct snd_soc_card *card,
+ 			if (!snd_soc_is_matching_component(platform, component))
+ 				continue;
+ 
++			dev_warn(card->dev, "ASoC: Adding component %s for platform %pOF\n",
++				 component->name, platform->of_node);
+ 			snd_soc_rtd_add_component(rtd, component);
+ 		}
+ 	}
+diff --git a/sound/soc/soc-dapm.c b/sound/soc/soc-dapm.c
+index 59d07648a7e7..2c2ce6682eeb 100644
+--- a/sound/soc/soc-dapm.c
++++ b/sound/soc/soc-dapm.c
+@@ -2339,7 +2339,7 @@ static int soc_dapm_mixer_update_power(struct snd_soc_card *card,
+ 		 * right channel.
+ 		 *
+ 		 * A stereo control is signified by a valid 'rconnect'
+-		 * value, either 0 for unconnected, or >= 0 for connected.
++		 * value, either 0 for unconnected, or > 0 for connected.
+ 		 * This is chosen instead of using snd_soc_volsw_is_stereo,
+ 		 * so that the behavior of snd_soc_dapm_mixer_update_power
+ 		 * doesn't change even when the kcontrol passed in is
+diff --git a/sound/soc/sunxi/Makefile b/sound/soc/sunxi/Makefile
+index 7bbe2526e16e..4392e0e49dd0 100644
+--- a/sound/soc/sunxi/Makefile
++++ b/sound/soc/sunxi/Makefile
+@@ -2,8 +2,8 @@
+ obj-$(CONFIG_SND_SUN4I_CODEC) += sun4i-codec.o
+ obj-$(CONFIG_SND_SUN4I_I2S) += sun4i-i2s.o
+ obj-$(CONFIG_SND_SUN4I_SPDIF) += sun4i-spdif.o
++obj-$(CONFIG_SND_SUN8I_ADDA_PR_REGMAP) += sun8i-adda-pr-regmap.o
++obj-$(CONFIG_SND_SUN8I_CODEC) += sun8i-codec.o
+ obj-$(CONFIG_SND_SUN8I_CODEC_ANALOG) += sun8i-codec-analog.o
+ obj-$(CONFIG_SND_SUN20I_CODEC) += sun20i-codec.o
+ obj-$(CONFIG_SND_SUN50I_CODEC_ANALOG) += sun50i-codec-analog.o
+-obj-$(CONFIG_SND_SUN8I_CODEC) += sun8i-codec.o
+-obj-$(CONFIG_SND_SUN8I_ADDA_PR_REGMAP) += sun8i-adda-pr-regmap.o
+diff --git a/sound/soc/sunxi/sun4i-i2s.c b/sound/soc/sunxi/sun4i-i2s.c
+index 75075acc8658..7f7d45d2827c 100644
+--- a/sound/soc/sunxi/sun4i-i2s.c
++++ b/sound/soc/sunxi/sun4i-i2s.c
+@@ -38,10 +38,6 @@
+ #define SUN4I_I2S_FMT0_BCLK_POLARITY_MASK	BIT(6)
+ #define SUN4I_I2S_FMT0_BCLK_POLARITY_INVERTED		(1 << 6)
+ #define SUN4I_I2S_FMT0_BCLK_POLARITY_NORMAL		(0 << 6)
+-#define SUN4I_I2S_FMT0_SR_MASK			GENMASK(5, 4)
+-#define SUN4I_I2S_FMT0_SR(sr)				((sr) << 4)
+-#define SUN4I_I2S_FMT0_WSS_MASK			GENMASK(3, 2)
+-#define SUN4I_I2S_FMT0_WSS(wss)				((wss) << 2)
+ #define SUN4I_I2S_FMT0_FMT_MASK			GENMASK(1, 0)
+ #define SUN4I_I2S_FMT0_FMT_RIGHT_J			(2 << 0)
+ #define SUN4I_I2S_FMT0_FMT_LEFT_J			(1 << 0)
+@@ -71,8 +67,6 @@
+ #define SUN4I_I2S_INT_STA_REG		0x20
+ 
+ #define SUN4I_I2S_CLK_DIV_REG		0x24
+-#define SUN4I_I2S_CLK_DIV_MCLK_EN		BIT(7)
+-#define SUN4I_I2S_CLK_DIV_BCLK_MASK		GENMASK(6, 4)
+ #define SUN4I_I2S_CLK_DIV_BCLK(bclk)			((bclk) << 4)
+ #define SUN4I_I2S_CLK_DIV_MCLK_MASK		GENMASK(3, 0)
+ #define SUN4I_I2S_CLK_DIV_MCLK(mclk)			((mclk) << 0)
+diff --git a/sound/soc/sunxi/sun4i-spdif.c b/sound/soc/sunxi/sun4i-spdif.c
+index ecbe8e51b9a5..e2a8aaaf53dd 100644
+--- a/sound/soc/sunxi/sun4i-spdif.c
++++ b/sound/soc/sunxi/sun4i-spdif.c
+@@ -53,6 +53,8 @@
+ 
+ #define SUN4I_SPDIF_TXFIFO	(0x0C)
+ 
++#define SUN8I_SPDIF_ISTA	(0x0C)
++
+ #define SUN4I_SPDIF_RXFIFO	(0x10)
+ 
+ #define SUN4I_SPDIF_FCTL	(0x14)
+@@ -81,9 +83,14 @@
+ 
+ #define SUN4I_SPDIF_FSTA	(0x18)
+ 	#define SUN4I_SPDIF_FSTA_TXE			BIT(14)
+-	#define SUN4I_SPDIF_FSTA_TXECNTSHT		(8)
++	#define SUN4I_SPDIF_FSTA_TXE_CNT		(8)
+ 	#define SUN4I_SPDIF_FSTA_RXA			BIT(6)
+-	#define SUN4I_SPDIF_FSTA_RXACNTSHT		(0)
++	#define SUN4I_SPDIF_FSTA_RXA_CNT		(0)
++
++	#define SUN8I_SPDIF_FSTA_TXE			BIT(31)
++	#define SUN8I_SPDIF_FSTA_TXE_CNT		(16)
++	#define SUN8I_SPDIF_FSTA_RXA			BIT(15)
++	#define SUN8I_SPDIF_FSTA_RXA_CNT		(0)
+ 
+ #define SUN4I_SPDIF_INT		(0x1C)
+ 	#define SUN4I_SPDIF_INT_RXLOCKEN		BIT(18)
+-- 
+2.20.1
+

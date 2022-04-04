@@ -1,0 +1,53 @@
+From 65fb9bd8dc188403f9f922542ee2faae64f96a54 Mon Sep 17 00:00:00 2001
+From: Anup Patel <anup.patel@wdc.com>
+Date: Thu, 13 May 2021 14:10:34 +0530
+Subject: [PATCH 050/124] RISC-V: Clear SIP bit only when using SBI IPI
+ operations
+
+The software interrupt pending (i.e. [M|S]SIP) bit is writeable for
+S-mode but read-only for M-mode so we clear this bit only when using
+SBI IPI operations.
+
+Signed-off-by: Anup Patel <anup.patel@wdc.com>
+Reviewed-by: Bin Meng <bmeng.cn@gmail.com>
+---
+ arch/riscv/kernel/sbi.c | 8 +++++++-
+ arch/riscv/kernel/smp.c | 2 --
+ 2 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/arch/riscv/kernel/sbi.c b/arch/riscv/kernel/sbi.c
+index 9a84f0cb5175..8aeca26198f2 100644
+--- a/arch/riscv/kernel/sbi.c
++++ b/arch/riscv/kernel/sbi.c
+@@ -598,8 +598,14 @@ static void sbi_send_cpumask_ipi(const struct cpumask *target)
+ 	sbi_send_ipi(cpumask_bits(&hartid_mask));
+ }
+ 
++static void sbi_ipi_clear(void)
++{
++	csr_clear(CSR_IP, IE_SIE);
++}
++
+ static const struct riscv_ipi_ops sbi_ipi_ops = {
+-	.ipi_inject = sbi_send_cpumask_ipi
++	.ipi_inject = sbi_send_cpumask_ipi,
++	.ipi_clear = sbi_ipi_clear
+ };
+ 
+ void __init sbi_init(void)
+diff --git a/arch/riscv/kernel/smp.c b/arch/riscv/kernel/smp.c
+index 2f6da845c9ae..f2bbaa670f72 100644
+--- a/arch/riscv/kernel/smp.c
++++ b/arch/riscv/kernel/smp.c
+@@ -99,8 +99,6 @@ void riscv_clear_ipi(void)
+ {
+ 	if (ipi_ops && ipi_ops->ipi_clear)
+ 		ipi_ops->ipi_clear();
+-
+-	csr_clear(CSR_IP, IE_SIE);
+ }
+ EXPORT_SYMBOL_GPL(riscv_clear_ipi);
+ 
+-- 
+2.20.1
+

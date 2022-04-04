@@ -1,0 +1,30 @@
+From a592f18da0fa6a1cdcc3b06302c78d0b32f20d62 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 6 Jun 2021 09:31:10 -0500
+Subject: [PATCH 026/124] Input: sun4i-lradc-keys: Add support for R329 and D1
+
+This LRADC variant uses the same 3/4*AVCC reference voltage as the A83T
+variant. The R329 and D1 LRADCs appear to be identical, so D1 support is
+accomplished through having the R329 LRADC as a fallback compatible.
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/input/keyboard/sun4i-lradc-keys.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/input/keyboard/sun4i-lradc-keys.c b/drivers/input/keyboard/sun4i-lradc-keys.c
+index cf8813d56208..bec53c7a89b1 100644
+--- a/drivers/input/keyboard/sun4i-lradc-keys.c
++++ b/drivers/input/keyboard/sun4i-lradc-keys.c
+@@ -331,6 +331,8 @@ static const struct of_device_id sun4i_lradc_of_match[] = {
+ 		.data = &lradc_variant_a10 },
+ 	{ .compatible = "allwinner,sun8i-a83t-r-lradc",
+ 		.data = &r_lradc_variant_a83t },
++	{ .compatible = "allwinner,sun50i-r329-lradc",
++		.data = &r_lradc_variant_a83t },
+ 	{ /* sentinel */ }
+ };
+ MODULE_DEVICE_TABLE(of, sun4i_lradc_of_match);
+-- 
+2.20.1
+

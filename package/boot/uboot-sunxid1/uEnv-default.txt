@@ -1,0 +1,4 @@
+setenv loadkernel fatload mmc 0 0x45000000 uImage
+setenv bootargs console=ttyS0,115200 earlycon=sbi root=/dev/mmcblk0p2 rootwait
+setenv uenvcmd run loadkernel \&\& bootm 0x45000000
+run uenvcmd

@@ -1,0 +1,42 @@
+From d9e58fa4c5704d94f3fec0d73eb018e7684b634b Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 13 Jun 2021 23:41:44 -0500
+Subject: [PATCH 031/124] hwspinlock: sun6i: Fix driver to match binding
+
+The binding for this device does not allow using the clock-names and
+reset-names properties, so the driver should not reference the clock or
+reset by name.
+
+Fixes: 3c881e05c814 ("hwspinlock: add sun6i hardware spinlock support")
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/hwspinlock/sun6i_hwspinlock.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/hwspinlock/sun6i_hwspinlock.c b/drivers/hwspinlock/sun6i_hwspinlock.c
+index 21dfbbc7a8ae..11b63ce3bd46 100644
+--- a/drivers/hwspinlock/sun6i_hwspinlock.c
++++ b/drivers/hwspinlock/sun6i_hwspinlock.c
+@@ -104,14 +104,12 @@ static int sun6i_hwspinlock_probe(struct platform_device *pdev)
+ 	if (!priv)
+ 		return -ENOMEM;
+ 
+-	priv->ahb_clk = devm_clk_get(&pdev->dev, "ahb");
+-	if (IS_ERR(priv->ahb_clk)) {
+-		err = PTR_ERR(priv->ahb_clk);
+-		dev_err(&pdev->dev, "unable to get AHB clock (%d)\n", err);
+-		return err;
+-	}
++	priv->ahb_clk = devm_clk_get(&pdev->dev, NULL);
++	if (IS_ERR(priv->ahb_clk))
++		return dev_err_probe(&pdev->dev, PTR_ERR(priv->ahb_clk),
++				     "unable to get AHB clock\n");
+ 
+-	priv->reset = devm_reset_control_get(&pdev->dev, "ahb");
++	priv->reset = devm_reset_control_get(&pdev->dev, NULL);
+ 	if (IS_ERR(priv->reset))
+ 		return dev_err_probe(&pdev->dev, PTR_ERR(priv->reset),
+ 				     "unable to get reset control\n");
+-- 
+2.20.1
+

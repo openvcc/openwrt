@@ -1,0 +1,26 @@
+From c35eeb146ba1a615b686951a6a89794ee5682148 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 6 Jun 2021 14:17:30 -0500
+Subject: [PATCH 069/124] Enable T-HEAD MMU extensions unconditionally
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ arch/riscv/kernel/soc.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/riscv/kernel/soc.c b/arch/riscv/kernel/soc.c
+index 05fa76467e69..8c9f33f921b4 100644
+--- a/arch/riscv/kernel/soc.c
++++ b/arch/riscv/kernel/soc.c
+@@ -44,6 +44,8 @@ void __init soc_setup_vm(void)
+ 
+ 	switch (vendor_id) {
+ 	case THEAD_VENDOR_ID:
++	// Do not rely on the bootloader...
++	default:
+ 		thead_init();
+ 		break;
+ 	}
+-- 
+2.20.1
+

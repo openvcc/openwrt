@@ -1,0 +1,41 @@
+From d7dcb35564295be22f4cffb5cab335d6b75ad49d Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 13 Jun 2021 23:46:19 -0500
+Subject: [PATCH 107/124] soc: sunxi: sram: Add D1 DSP SRAM
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/soc/sunxi/sunxi_sram.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/drivers/soc/sunxi/sunxi_sram.c b/drivers/soc/sunxi/sunxi_sram.c
+index 8b5356ef04be..49d5ba9f74ba 100644
+--- a/drivers/soc/sunxi/sunxi_sram.c
++++ b/drivers/soc/sunxi/sunxi_sram.c
+@@ -80,6 +80,12 @@ static struct sunxi_sram_desc sun4i_a10_sram_d = {
+ 				  SUNXI_SRAM_MAP(1, 1, "usb-otg")),
+ };
+ 
++static struct sunxi_sram_desc sun20i_d1_dsp_sram = {
++	.data	= SUNXI_SRAM_DATA("DSP", 0x8, 0, 1,
++				  SUNXI_SRAM_MAP(1, 0, "cpu"),
++				  SUNXI_SRAM_MAP(0, 1, "dsp")),
++};
++
+ static struct sunxi_sram_desc sun50i_a64_sram_c = {
+ 	.data	= SUNXI_SRAM_DATA("C", 0x4, 24, 1,
+ 				  SUNXI_SRAM_MAP(1, 0, "cpu"),
+@@ -99,6 +105,10 @@ static const struct of_device_id sunxi_sram_dt_ids[] = {
+ 		.compatible	= "allwinner,sun4i-a10-sram-d",
+ 		.data		= &sun4i_a10_sram_d.data,
+ 	},
++	{
++		.compatible	= "allwinner,sun20i-d1-dsp-sram",
++		.data		= &sun20i_d1_dsp_sram.data,
++	},
+ 	{
+ 		.compatible	= "allwinner,sun50i-a64-sram-c",
+ 		.data		= &sun50i_a64_sram_c.data,
+-- 
+2.20.1
+

@@ -1,0 +1,32 @@
+diff -ruN u-boot-2021.10.old/arch/arm/Kconfig u-boot-2021.10/arch/arm/Kconfig
+--- u-boot-2021.10.old/arch/arm/Kconfig	2021-11-09 16:09:43.034360581 +0100
++++ u-boot-2021.10/arch/arm/Kconfig	2021-11-09 16:04:49.197044604 +0100
+@@ -1046,7 +1046,7 @@
+ 	select SUNXI_GPIO
+ 	select SYS_NS16550
+ 	select SYS_THUMB_BUILD if !ARM64
+-	select TOOLS_LIBCRYPTO
++#	select TOOLS_LIBCRYPTO
+ 	select USB if DISTRO_DEFAULTS
+ 	select USB_KEYBOARD if DISTRO_DEFAULTS && USB_HOST
+ 	select USB_STORAGE if DISTRO_DEFAULTS && USB_HOST
+diff -ruN u-boot-2021.10.old/board/sunxi/Kconfig u-boot-2021.10/board/sunxi/Kconfig
+--- u-boot-2021.10.old/board/sunxi/Kconfig	2021-11-09 16:09:50.733940804 +0100
++++ u-boot-2021.10/board/sunxi/Kconfig	2021-11-09 16:06:23.691894152 +0100
+@@ -90,7 +90,7 @@
+ 	select SPL_PINCTRL if SPL_DM
+ 	select SPL_SEPARATE_BSS if SPL
+ 	select SUPPORT_SPL
+-	select TOOLS_LIBCRYPTO
++#	select TOOLS_LIBCRYPTO
+ 	imply CMD_MMC
+ 	imply CMD_USB
+ 	imply DISTRO_DEFAULTS
+diff -ruN u-boot-2021.10.old/configs/nezha_defconfig u-boot-2021.10/configs/nezha_defconfig
+--- u-boot-2021.10.old/configs/nezha_defconfig	2021-11-09 16:02:08.392474691 +0100
++++ u-boot-2021.10/configs/nezha_defconfig	2021-11-09 16:13:19.585885123 +0100
+@@ -30,3 +30,4 @@
+ CONFIG_USB_GADGET=y
+ CONFIG_USB_GADGET_DOWNLOAD=y
+ CONFIG_USB_FUNCTION_MASS_STORAGE=y
++CONFIG_TOOLS_LIBCRYPTO=n

@@ -1,0 +1,25 @@
+From 751def916449fd13685e28c913032c51266b6d10 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Mon, 31 May 2021 21:46:50 -0500
+Subject: [PATCH 071/124] riscv: cacheinfo: Remind myself to fix this
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ arch/riscv/kernel/cacheinfo.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/riscv/kernel/cacheinfo.c b/arch/riscv/kernel/cacheinfo.c
+index 90deabfe63ea..a1874a68a17e 100644
+--- a/arch/riscv/kernel/cacheinfo.c
++++ b/arch/riscv/kernel/cacheinfo.c
+@@ -94,6 +94,7 @@ static void fill_cacheinfo(struct cacheinfo **this_leaf,
+ {
+ 	unsigned int size, sets, line_size;
+ 
++	/* Buggy: may not init leaves, but num_leaves was set below. */
+ 	if (!of_property_read_u32(node, "cache-size", &size) &&
+ 	    !of_property_read_u32(node, "cache-block-size", &line_size) &&
+ 	    !of_property_read_u32(node, "cache-sets", &sets)) {
+-- 
+2.20.1
+

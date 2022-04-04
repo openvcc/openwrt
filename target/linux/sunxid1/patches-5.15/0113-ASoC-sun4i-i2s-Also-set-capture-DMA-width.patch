@@ -1,0 +1,25 @@
+From 875adee436d43269aa11d98c0396dc298407975a Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 13 Jun 2021 23:50:57 -0500
+Subject: [PATCH 113/124] ASoC: sun4i-i2s: Also set capture DMA width
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ sound/soc/sunxi/sun4i-i2s.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/sound/soc/sunxi/sun4i-i2s.c b/sound/soc/sunxi/sun4i-i2s.c
+index 7047f71629ab..75075acc8658 100644
+--- a/sound/soc/sunxi/sun4i-i2s.c
++++ b/sound/soc/sunxi/sun4i-i2s.c
+@@ -631,6 +631,7 @@ static int sun4i_i2s_hw_params(struct snd_pcm_substream *substream,
+ 			params_physical_width(params));
+ 		return -EINVAL;
+ 	}
++	i2s->capture_dma_data.addr_width = width;
+ 	i2s->playback_dma_data.addr_width = width;
+ 
+ 	sr = i2s->variant->get_sr(word_size);
+-- 
+2.20.1
+

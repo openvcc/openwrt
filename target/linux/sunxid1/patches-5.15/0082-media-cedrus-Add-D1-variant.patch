@@ -1,0 +1,43 @@
+From 0d13a0d00a53d70b8a45437dadec46c42be7b56a Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 13 Jun 2021 23:47:22 -0500
+Subject: [PATCH 082/124] media: cedrus: Add D1 variant
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/staging/media/sunxi/cedrus/cedrus.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus.c b/drivers/staging/media/sunxi/cedrus/cedrus.c
+index c0d005dafc6c..98c66431b232 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus.c
+@@ -527,6 +527,14 @@ static const struct cedrus_variant sun8i_r40_cedrus_variant = {
+ 	.mod_rate	= 297000000,
+ };
+ 
++static const struct cedrus_variant sun20i_d1_cedrus_variant = {
++	.capabilities	= CEDRUS_CAPABILITY_UNTILED |
++			  CEDRUS_CAPABILITY_MPEG2_DEC |
++			  CEDRUS_CAPABILITY_H264_DEC |
++			  CEDRUS_CAPABILITY_H265_DEC,
++	.mod_rate	= 432000000,
++};
++
+ static const struct cedrus_variant sun50i_a64_cedrus_variant = {
+ 	.capabilities	= CEDRUS_CAPABILITY_UNTILED |
+ 			  CEDRUS_CAPABILITY_MPEG2_DEC |
+@@ -583,6 +591,10 @@ static const struct of_device_id cedrus_dt_match[] = {
+ 		.compatible = "allwinner,sun8i-r40-video-engine",
+ 		.data = &sun8i_r40_cedrus_variant,
+ 	},
++	{
++		.compatible = "allwinner,sun20i-d1-video-engine",
++		.data = &sun20i_d1_cedrus_variant,
++	},
+ 	{
+ 		.compatible = "allwinner,sun50i-a64-video-engine",
+ 		.data = &sun50i_a64_cedrus_variant,
+-- 
+2.20.1
+

@@ -1,0 +1,26 @@
+From bab6179fa6b0f3f819968c4034c1517283eb3dc7 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 13 Jun 2021 23:54:21 -0500
+Subject: [PATCH 072/124] clocksource: riscv: Prefer it over MMIO clocksources
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/clocksource/timer-riscv.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/clocksource/timer-riscv.c b/drivers/clocksource/timer-riscv.c
+index c51c5ed15aa7..a035bdf6fc58 100644
+--- a/drivers/clocksource/timer-riscv.c
++++ b/drivers/clocksource/timer-riscv.c
+@@ -54,7 +54,7 @@ static u64 notrace riscv_sched_clock(void)
+ 
+ static struct clocksource riscv_clocksource = {
+ 	.name		= "riscv_clocksource",
+-	.rating		= 300,
++	.rating		= 400,
+ 	.mask		= CLOCKSOURCE_MASK(64),
+ 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
+ 	.read		= riscv_clocksource_rdtime,
+-- 
+2.20.1
+

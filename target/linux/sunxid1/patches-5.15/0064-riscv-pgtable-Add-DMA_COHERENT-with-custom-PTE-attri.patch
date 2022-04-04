@@ -1,0 +1,200 @@
+From d2579d2b8552501662320fbc57875f83f0d91a4f Mon Sep 17 00:00:00 2001
+From: Guo Ren <guoren@linux.alibaba.com>
+Date: Sun, 6 Jun 2021 09:04:04 +0000
+Subject: [PATCH 064/124] riscv: pgtable: Add DMA_COHERENT with custom PTE
+ attributes
+
+The dma-noncoherent SOCs need different virtual memory mappings
+with different attributes:
+ - noncached + Strong Order (for IO/DMA descriptor)
+ - noncached + Weak Order (for writecombine usage, eg: frame
+   buffer)
+
+All above base on PTE attributes by MMU hardware. That means
+address attributes are determined by PTE entry, not PMA. RISC-V
+soc vendors have defined their own custom PTE attributes for
+dma-noncoherency.
+
+Signed-off-by: Guo Ren <guoren@linux.alibaba.com>
+Signed-off-by: Liu Shaohua <liush@allwinnertech.com>
+Cc: Palmer Dabbelt <palmerdabbelt@google.com>
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: Anup Patel <anup.patel@wdc.com>
+Cc: Arnd Bergmann <arnd@arndb.de>
+Cc: Drew Fustini <drew@beagleboard.org>
+Cc: Wei Fu <wefu@redhat.com>
+Cc: Wei Wu <lazyparser@gmail.com>
+Cc: Chen-Yu Tsai <wens@csie.org>
+Cc: Maxime Ripard <maxime@cerno.tech>
+---
+ arch/riscv/include/asm/pgtable-bits.h  | 22 +++++++++++++++++++++-
+ arch/riscv/include/asm/pgtable.h       | 11 ++++-------
+ arch/riscv/include/asm/soc.h           |  1 +
+ arch/riscv/include/asm/vendorid_list.h |  1 +
+ arch/riscv/kernel/soc.c                | 22 ++++++++++++++++++++++
+ arch/riscv/mm/init.c                   |  4 ++++
+ 6 files changed, 53 insertions(+), 8 deletions(-)
+
+diff --git a/arch/riscv/include/asm/pgtable-bits.h b/arch/riscv/include/asm/pgtable-bits.h
+index 2ee413912926..e9e95666f9bd 100644
+--- a/arch/riscv/include/asm/pgtable-bits.h
++++ b/arch/riscv/include/asm/pgtable-bits.h
+@@ -24,6 +24,11 @@
+ #define _PAGE_DIRTY     (1 << 7)    /* Set by hardware on any write */
+ #define _PAGE_SOFT      (1 << 8)    /* Reserved for software */
+ 
++#define _PAGE_DMA_MASK	__riscv_custom_pte.mask
++#define _PAGE_DMA_CACHE	__riscv_custom_pte.cache
++#define _PAGE_DMA_IO	__riscv_custom_pte.io
++#define _PAGE_DMA_WC	__riscv_custom_pte.wc
++
+ #define _PAGE_SPECIAL   _PAGE_SOFT
+ #define _PAGE_TABLE     _PAGE_PRESENT
+ 
+@@ -35,10 +40,25 @@
+ 
+ #define _PAGE_PFN_SHIFT 10
+ 
++#ifndef __ASSEMBLY__
++
++struct riscv_custom_pte {
++	unsigned long cache;
++	unsigned long mask;
++	unsigned long io;
++	unsigned long wc;
++};
++
++extern struct riscv_custom_pte __riscv_custom_pte;
++
+ /* Set of bits to preserve across pte_modify() */
+ #define _PAGE_CHG_MASK  (~(unsigned long)(_PAGE_PRESENT | _PAGE_READ |	\
+ 					  _PAGE_WRITE | _PAGE_EXEC |	\
+-					  _PAGE_USER | _PAGE_GLOBAL))
++					  _PAGE_USER | _PAGE_GLOBAL |	\
++					  _PAGE_DMA_MASK))
++
++#endif
++
+ /*
+  * when all of R/W/X are zero, the PTE is a pointer to the next level
+  * of the page table; otherwise, it is a leaf PTE.
+diff --git a/arch/riscv/include/asm/pgtable.h b/arch/riscv/include/asm/pgtable.h
+index 4866597886f1..6f2bdab5bfa7 100644
+--- a/arch/riscv/include/asm/pgtable.h
++++ b/arch/riscv/include/asm/pgtable.h
+@@ -117,7 +117,7 @@
+ #define USER_PTRS_PER_PGD   (TASK_SIZE / PGDIR_SIZE)
+ 
+ /* Page protection bits */
+-#define _PAGE_BASE	(_PAGE_PRESENT | _PAGE_ACCESSED | _PAGE_USER)
++#define _PAGE_BASE	(_PAGE_PRESENT | _PAGE_ACCESSED | _PAGE_USER | _PAGE_DMA_CACHE)
+ 
+ #define PAGE_NONE		__pgprot(_PAGE_PROT_NONE)
+ #define PAGE_READ		__pgprot(_PAGE_BASE | _PAGE_READ)
+@@ -138,7 +138,8 @@
+ 				| _PAGE_PRESENT \
+ 				| _PAGE_ACCESSED \
+ 				| _PAGE_DIRTY \
+-				| _PAGE_GLOBAL)
++				| _PAGE_GLOBAL \
++				| _PAGE_DMA_CACHE)
+ 
+ #define PAGE_KERNEL		__pgprot(_PAGE_KERNEL)
+ #define PAGE_KERNEL_READ	__pgprot(_PAGE_KERNEL & ~_PAGE_WRITE)
+@@ -148,11 +149,7 @@
+ 
+ #define PAGE_TABLE		__pgprot(_PAGE_TABLE)
+ 
+-/*
+- * The RISC-V ISA doesn't yet specify how to query or modify PMAs, so we can't
+- * change the properties of memory regions.
+- */
+-#define _PAGE_IOREMAP _PAGE_KERNEL
++#define _PAGE_IOREMAP	((_PAGE_KERNEL & ~_PAGE_DMA_MASK) | _PAGE_DMA_IO)
+ 
+ extern pgd_t swapper_pg_dir[];
+ 
+diff --git a/arch/riscv/include/asm/soc.h b/arch/riscv/include/asm/soc.h
+index f494066051a2..fc587d7d295d 100644
+--- a/arch/riscv/include/asm/soc.h
++++ b/arch/riscv/include/asm/soc.h
+@@ -17,6 +17,7 @@
+ 		 = { .compatible = compat, .data = fn  }
+ 
+ void soc_early_init(void);
++void soc_setup_vm(void);
+ 
+ extern unsigned long __soc_early_init_table_start;
+ extern unsigned long __soc_early_init_table_end;
+diff --git a/arch/riscv/include/asm/vendorid_list.h b/arch/riscv/include/asm/vendorid_list.h
+index 9d934215b3c8..c2710f391a89 100644
+--- a/arch/riscv/include/asm/vendorid_list.h
++++ b/arch/riscv/include/asm/vendorid_list.h
+@@ -6,5 +6,6 @@
+ #define ASM_VENDOR_LIST_H
+ 
+ #define SIFIVE_VENDOR_ID	0x489
++#define  THEAD_VENDOR_ID	0x401
+ 
+ #endif
+diff --git a/arch/riscv/kernel/soc.c b/arch/riscv/kernel/soc.c
+index a0516172a33c..05fa76467e69 100644
+--- a/arch/riscv/kernel/soc.c
++++ b/arch/riscv/kernel/soc.c
+@@ -3,8 +3,10 @@
+  * Copyright (C) 2020 Western Digital Corporation or its affiliates.
+  */
+ #include <linux/init.h>
++#include <linux/mm.h>
+ #include <linux/libfdt.h>
+ #include <linux/pgtable.h>
++#include <asm/image.h>
+ #include <asm/soc.h>
+ 
+ /*
+@@ -26,3 +28,23 @@ void __init soc_early_init(void)
+ 		}
+ 	}
+ }
++
++static void __init thead_init(void)
++{
++	__riscv_custom_pte.cache = 0x7000000000000000;
++	__riscv_custom_pte.mask  = 0xf800000000000000;
++	__riscv_custom_pte.io    = BIT(63);
++	__riscv_custom_pte.wc    = 0;
++}
++
++void __init soc_setup_vm(void)
++{
++	unsigned long vendor_id =
++		((struct riscv_image_header *)(&_start))->res1;
++
++	switch (vendor_id) {
++	case THEAD_VENDOR_ID:
++		thead_init();
++		break;
++	}
++};
+diff --git a/arch/riscv/mm/init.c b/arch/riscv/mm/init.c
+index 6ba585a974a6..4af87922c19f 100644
+--- a/arch/riscv/mm/init.c
++++ b/arch/riscv/mm/init.c
+@@ -612,6 +612,7 @@ asmlinkage void __init setup_vm(uintptr_t dtb_pa)
+ {
+ 	pmd_t __maybe_unused fix_bmap_spmd, fix_bmap_epmd;
+ 
++	soc_setup_vm();
+ 	setup_protection_map();
+ 
+ 	kernel_map.virt_addr = KERNEL_LINK_ADDR;
+@@ -876,3 +877,6 @@ int __meminit vmemmap_populate(unsigned long start, unsigned long end, int node,
+ 	return vmemmap_populate_basepages(start, end, node, NULL);
+ }
+ #endif
++
++struct riscv_custom_pte __riscv_custom_pte __ro_after_init;
++EXPORT_SYMBOL(__riscv_custom_pte);
+-- 
+2.20.1
+

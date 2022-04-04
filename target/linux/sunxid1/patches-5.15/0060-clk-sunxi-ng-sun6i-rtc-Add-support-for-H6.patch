@@ -1,0 +1,91 @@
+From 026ed9ed88c6cb6b2ae8f005f7b83304800a6171 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Tue, 31 Aug 2021 23:01:42 -0500
+Subject: [PATCH 060/124] clk: sunxi-ng: sun6i-rtc: Add support for H6
+
+H6 supports IOSC calibration and an ext-osc32k input. Unlike newer SoCs,
+it has a single parent for its fanout clock.
+
+Add support for H6 in the CCU driver, replacing the support in the
+existing early OF clock provider.
+
+Series-changes: 3
+ - Rebase example on top of driver changes, and drop the second example.
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/clk/sunxi-ng/ccu-sun6i-rtc.c | 15 +++++++++++++++
+ drivers/rtc/rtc-sun6i.c              | 17 -----------------
+ 2 files changed, 15 insertions(+), 17 deletions(-)
+
+diff --git a/drivers/clk/sunxi-ng/ccu-sun6i-rtc.c b/drivers/clk/sunxi-ng/ccu-sun6i-rtc.c
+index f563cee58a20..e5541da098f1 100644
+--- a/drivers/clk/sunxi-ng/ccu-sun6i-rtc.c
++++ b/drivers/clk/sunxi-ng/ccu-sun6i-rtc.c
+@@ -293,6 +293,10 @@ static const struct sunxi_ccu_desc sun6i_rtc_ccu_desc = {
+ 	.hw_clks	= &sun6i_rtc_ccu_hw_clks,
+ };
+ 
++static const struct clk_parent_data sun50i_h6_osc32k_fanout_parents[] = {
++	{ .hw = &osc32k_clk.common.hw },
++};
++
+ static const struct clk_parent_data sun50i_h616_osc32k_fanout_parents[] = {
+ 	{ .hw = &osc32k_clk.common.hw },
+ 	{ .fw_name = "pll-32k" },
+@@ -305,6 +309,13 @@ static const struct clk_parent_data sun50i_r329_osc32k_fanout_parents[] = {
+ 	{ .hw = &osc24M_32k_clk.common.hw }
+ };
+ 
++static const struct sun6i_rtc_match_data sun50i_h6_rtc_ccu_data = {
++	.have_ext_osc32k	= true,
++	.have_iosc_calibration	= true,
++	.osc32k_fanout_parents	= sun50i_h6_osc32k_fanout_parents,
++	.osc32k_fanout_nparents	= ARRAY_SIZE(sun50i_h6_osc32k_fanout_parents),
++};
++
+ static const struct sun6i_rtc_match_data sun50i_h616_rtc_ccu_data = {
+ 	.have_iosc_calibration	= true,
+ 	.rtc_32k_single_parent	= true,
+@@ -319,6 +330,10 @@ static const struct sun6i_rtc_match_data sun50i_r329_rtc_ccu_data = {
+ };
+ 
+ static const struct of_device_id sun6i_rtc_ccu_match[] = {
++	{
++		.compatible	= "allwinner,sun50i-h6-rtc",
++		.data		= &sun50i_h6_rtc_ccu_data,
++	},
+ 	{
+ 		.compatible	= "allwinner,sun50i-h616-rtc",
+ 		.data		= &sun50i_h616_rtc_ccu_data,
+diff --git a/drivers/rtc/rtc-sun6i.c b/drivers/rtc/rtc-sun6i.c
+index 12fd674b003d..4358cde143d4 100644
+--- a/drivers/rtc/rtc-sun6i.c
++++ b/drivers/rtc/rtc-sun6i.c
+@@ -364,23 +364,6 @@ CLK_OF_DECLARE_DRIVER(sun8i_h3_rtc_clk, "allwinner,sun8i-h3-rtc",
+ CLK_OF_DECLARE_DRIVER(sun50i_h5_rtc_clk, "allwinner,sun50i-h5-rtc",
+ 		      sun8i_h3_rtc_clk_init);
+ 
+-static const struct sun6i_rtc_clk_data sun50i_h6_rtc_data = {
+-	.rc_osc_rate = 16000000,
+-	.fixed_prescaler = 32,
+-	.has_prescaler = 1,
+-	.has_out_clk = 1,
+-	.export_iosc = 1,
+-	.has_losc_en = 1,
+-	.has_auto_swt = 1,
+-};
+-
+-static void __init sun50i_h6_rtc_clk_init(struct device_node *node)
+-{
+-	sun6i_rtc_clk_init(node, &sun50i_h6_rtc_data);
+-}
+-CLK_OF_DECLARE_DRIVER(sun50i_h6_rtc_clk, "allwinner,sun50i-h6-rtc",
+-		      sun50i_h6_rtc_clk_init);
+-
+ /*
+  * The R40 user manual is self-conflicting on whether the prescaler is
+  * fixed or configurable. The clock diagram shows it as fixed, but there
+-- 
+2.20.1
+

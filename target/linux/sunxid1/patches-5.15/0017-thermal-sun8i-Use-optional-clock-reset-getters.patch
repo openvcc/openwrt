@@ -1,0 +1,114 @@
+From 02ca2ba7daef709e1271dc5176c6efe7c635b15a Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Wed, 23 Jun 2021 19:30:10 -0500
+Subject: [PATCH 017/124] thermal: sun8i: Use optional clock/reset getters
+
+The driver does not need to care about what variants have which clocks
+and resets; the devicetree binding already enforces that the necessary
+resources are provided. Simplify the logic by always calling the
+optional version of the getters, to pick up whatever references exist.
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/thermal/sun8i_thermal.c | 34 +++++++++------------------------
+ 1 file changed, 9 insertions(+), 25 deletions(-)
+
+diff --git a/drivers/thermal/sun8i_thermal.c b/drivers/thermal/sun8i_thermal.c
+index ddd21ef4e3eb..be8064e89906 100644
+--- a/drivers/thermal/sun8i_thermal.c
++++ b/drivers/thermal/sun8i_thermal.c
+@@ -66,8 +66,6 @@ struct tsensor {
+ };
+ 
+ struct ths_thermal_chip {
+-	bool            has_mod_clk;
+-	bool            has_bus_clk_reset;
+ 	int		sensor_num;
+ 	int		offset;
+ 	int		scale;
+@@ -335,21 +333,17 @@ static int sun8i_ths_resource_init(struct ths_device *tmdev)
+ 	if (IS_ERR(tmdev->regmap))
+ 		return PTR_ERR(tmdev->regmap);
+ 
+-	if (tmdev->chip->has_bus_clk_reset) {
+-		tmdev->reset = devm_reset_control_get(dev, NULL);
+-		if (IS_ERR(tmdev->reset))
+-			return PTR_ERR(tmdev->reset);
++	tmdev->reset = devm_reset_control_get_optional(dev, NULL);
++	if (IS_ERR(tmdev->reset))
++		return PTR_ERR(tmdev->reset);
+ 
+-		tmdev->bus_clk = devm_clk_get(&pdev->dev, "bus");
+-		if (IS_ERR(tmdev->bus_clk))
+-			return PTR_ERR(tmdev->bus_clk);
+-	}
++	tmdev->bus_clk = devm_clk_get_optional(&pdev->dev, "bus");
++	if (IS_ERR(tmdev->bus_clk))
++		return PTR_ERR(tmdev->bus_clk);
+ 
+-	if (tmdev->chip->has_mod_clk) {
+-		tmdev->mod_clk = devm_clk_get(&pdev->dev, "mod");
+-		if (IS_ERR(tmdev->mod_clk))
+-			return PTR_ERR(tmdev->mod_clk);
+-	}
++	tmdev->mod_clk = devm_clk_get_optional(&pdev->dev, "mod");
++	if (IS_ERR(tmdev->mod_clk))
++		return PTR_ERR(tmdev->mod_clk);
+ 
+ 	ret = reset_control_deassert(tmdev->reset);
+ 	if (ret)
+@@ -554,8 +548,6 @@ static const struct ths_thermal_chip sun8i_h3_ths = {
+ 	.sensor_num = 1,
+ 	.scale = 1211,
+ 	.offset = 217000,
+-	.has_mod_clk = true,
+-	.has_bus_clk_reset = true,
+ 	.temp_data_base = SUN8I_THS_TEMP_DATA,
+ 	.calibrate = sun8i_h3_ths_calibrate,
+ 	.init = sun8i_h3_thermal_init,
+@@ -567,8 +559,6 @@ static const struct ths_thermal_chip sun8i_r40_ths = {
+ 	.sensor_num = 2,
+ 	.offset = 251086,
+ 	.scale = 1130,
+-	.has_mod_clk = true,
+-	.has_bus_clk_reset = true,
+ 	.temp_data_base = SUN8I_THS_TEMP_DATA,
+ 	.calibrate = sun8i_h3_ths_calibrate,
+ 	.init = sun8i_h3_thermal_init,
+@@ -580,8 +570,6 @@ static const struct ths_thermal_chip sun50i_a64_ths = {
+ 	.sensor_num = 3,
+ 	.offset = 260890,
+ 	.scale = 1170,
+-	.has_mod_clk = true,
+-	.has_bus_clk_reset = true,
+ 	.temp_data_base = SUN8I_THS_TEMP_DATA,
+ 	.calibrate = sun8i_h3_ths_calibrate,
+ 	.init = sun8i_h3_thermal_init,
+@@ -591,7 +579,6 @@ static const struct ths_thermal_chip sun50i_a64_ths = {
+ 
+ static const struct ths_thermal_chip sun50i_a100_ths = {
+ 	.sensor_num = 3,
+-	.has_bus_clk_reset = true,
+ 	.ft_deviation = 8000,
+ 	.offset = 187744,
+ 	.scale = 672,
+@@ -604,8 +591,6 @@ static const struct ths_thermal_chip sun50i_a100_ths = {
+ 
+ static const struct ths_thermal_chip sun50i_h5_ths = {
+ 	.sensor_num = 2,
+-	.has_mod_clk = true,
+-	.has_bus_clk_reset = true,
+ 	.temp_data_base = SUN8I_THS_TEMP_DATA,
+ 	.calibrate = sun8i_h3_ths_calibrate,
+ 	.init = sun8i_h3_thermal_init,
+@@ -615,7 +600,6 @@ static const struct ths_thermal_chip sun50i_h5_ths = {
+ 
+ static const struct ths_thermal_chip sun50i_h6_ths = {
+ 	.sensor_num = 2,
+-	.has_bus_clk_reset = true,
+ 	.ft_deviation = 7000,
+ 	.offset = 187744,
+ 	.scale = 672,
+-- 
+2.20.1
+

@@ -1,0 +1,30 @@
+From a502296b25fd6244b196f49409aecdf5050304e5 Mon Sep 17 00:00:00 2001
+From: Andre Przywara <andre.przywara@arm.com>
+Date: Wed, 21 Apr 2021 12:46:43 +0100
+Subject: [PATCH 099/124] rtc: sun6i: Add Allwinner H616 support
+
+The H616 RTC changes its day storage to the newly introduced linear day
+scheme, so pair the new compatible string with this feature flag.
+
+Signed-off-by: Andre Przywara <andre.przywara@arm.com>
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/rtc/rtc-sun6i.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/rtc/rtc-sun6i.c b/drivers/rtc/rtc-sun6i.c
+index 1d2a72438bcf..e067082df356 100644
+--- a/drivers/rtc/rtc-sun6i.c
++++ b/drivers/rtc/rtc-sun6i.c
+@@ -772,6 +772,8 @@ static const struct of_device_id sun6i_rtc_dt_ids[] = {
+ 	{ .compatible = "allwinner,sun8i-v3-rtc" },
+ 	{ .compatible = "allwinner,sun50i-h5-rtc" },
+ 	{ .compatible = "allwinner,sun50i-h6-rtc" },
++	{ .compatible = "allwinner,sun50i-h616-rtc",
++		.data = (void *)RTC_LINEAR_DAY },
+ 	{ /* sentinel */ },
+ };
+ MODULE_DEVICE_TABLE(of, sun6i_rtc_dt_ids);
+-- 
+2.20.1
+

@@ -1,0 +1,44 @@
+From 837e54cc6396950ad0ca852aff40a3c7c9e03fe1 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Mon, 15 Nov 2021 00:48:47 -0600
+Subject: [PATCH 117/124] Disable broken ARCH_SUNXI drivers
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/irqchip/Makefile  | 6 +++---
+ drivers/soc/sunxi/Kconfig | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/irqchip/Makefile b/drivers/irqchip/Makefile
+index ba1097e01991..1b9e412577e8 100644
+--- a/drivers/irqchip/Makefile
++++ b/drivers/irqchip/Makefile
+@@ -23,9 +23,9 @@ obj-$(CONFIG_OMPIC)			+= irq-ompic.o
+ obj-$(CONFIG_OR1K_PIC)			+= irq-or1k-pic.o
+ obj-$(CONFIG_ORION_IRQCHIP)		+= irq-orion.o
+ obj-$(CONFIG_OMAP_IRQCHIP)		+= irq-omap-intc.o
+-obj-$(CONFIG_ARCH_SUNXI)		+= irq-sun4i.o
+-obj-$(CONFIG_ARCH_SUNXI)		+= irq-sun6i-r.o
+-obj-$(CONFIG_ARCH_SUNXI)		+= irq-sunxi-nmi.o
++#obj-$(CONFIG_ARCH_SUNXI)		+= irq-sun4i.o
++#obj-$(CONFIG_ARCH_SUNXI)		+= irq-sun6i-r.o
++#obj-$(CONFIG_ARCH_SUNXI)		+= irq-sunxi-nmi.o
+ obj-$(CONFIG_ARCH_SPEAR3XX)		+= spear-shirq.o
+ obj-$(CONFIG_ARM_GIC)			+= irq-gic.o irq-gic-common.o
+ obj-$(CONFIG_ARM_GIC_PM)		+= irq-gic-pm.o
+diff --git a/drivers/soc/sunxi/Kconfig b/drivers/soc/sunxi/Kconfig
+index 1fef0e711056..7762020ac56d 100644
+--- a/drivers/soc/sunxi/Kconfig
++++ b/drivers/soc/sunxi/Kconfig
+@@ -5,7 +5,7 @@
+ 
+ config SUNXI_MBUS
+ 	bool
+-	default ARCH_SUNXI
++	default ARCH_SUNXI && !RISCV
+ 	help
+ 	  Say y to enable the fixups needed to support the Allwinner
+ 	  MBUS DMA quirks.
+-- 
+2.20.1
+

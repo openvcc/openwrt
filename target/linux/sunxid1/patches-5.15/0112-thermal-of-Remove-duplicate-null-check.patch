@@ -1,0 +1,28 @@
+From 3b46883dc7c1f51aeca6b189121eef5f43560e82 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Wed, 23 Jun 2021 20:25:05 -0500
+Subject: [PATCH 112/124] thermal/of: Remove duplicate null check
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/thermal/thermal_of.c | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/drivers/thermal/thermal_of.c b/drivers/thermal/thermal_of.c
+index 6379f26a335f..3d1527ba003f 100644
+--- a/drivers/thermal/thermal_of.c
++++ b/drivers/thermal/thermal_of.c
+@@ -555,10 +555,6 @@ void thermal_zone_of_sensor_unregister(struct device *dev,
+ 
+ 	tz = tzd->devdata;
+ 
+-	/* no __thermal_zone, nothing to be done */
+-	if (!tz)
+-		return;
+-
+ 	/* stop temperature polling */
+ 	thermal_zone_device_disable(tzd);
+ 
+-- 
+2.20.1
+

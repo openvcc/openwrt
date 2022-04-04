@@ -1,0 +1,221 @@
+From 1c0b62a931ffc5ef35421dc8410dcf5213a135f0 Mon Sep 17 00:00:00 2001
+From: Mark Rutland <mark.rutland@arm.com>
+Date: Wed, 20 Oct 2021 20:23:09 +0100
+Subject: [PATCH 012/124] irq: remove handle_domain_{irq,nmi}()
+
+Now that entry code handles IRQ entry (including setting the IRQ regs)
+before calling irqchip code, irqchip code can safely call
+generic_handle_domain_irq(), and there's no functional reason for it to
+call handle_domain_irq().
+
+Let's cement this split of responsibility and remove handle_domain_irq()
+entirely, updating irqchip drivers to call generic_handle_domain_irq().
+
+For consistency, handle_domain_nmi() is similarly removed and replaced
+with a generic_handle_domain_nmi() function which also does not perform
+any entry logic.
+
+Previously handle_domain_{irq,nmi}() had a WARN_ON() which would fire
+when they were called in an inappropriate context. So that we can
+identify similar issues going forward, similar WARN_ON_ONCE() logic is
+added to the generic_handle_*() functions, and comments are updated for
+clarity and consistency.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+Reviewed-by: Marc Zyngier <maz@kernel.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+---
+ arch/riscv/Kconfig               |  1 -
+ drivers/irqchip/irq-riscv-intc.c |  2 +-
+ drivers/irqchip/irq-sun4i.c      |  2 +-
+ include/linux/irqdesc.h          |  9 +----
+ kernel/irq/Kconfig               |  7 ----
+ kernel/irq/irqdesc.c             | 68 ++++++++------------------------
+ 6 files changed, 20 insertions(+), 69 deletions(-)
+
+diff --git a/arch/riscv/Kconfig b/arch/riscv/Kconfig
+index f076cee11af6..c28b743eba57 100644
+--- a/arch/riscv/Kconfig
++++ b/arch/riscv/Kconfig
+@@ -62,7 +62,6 @@ config RISCV
+ 	select GENERIC_SCHED_CLOCK
+ 	select GENERIC_SMP_IDLE_THREAD
+ 	select GENERIC_TIME_VSYSCALL if MMU && 64BIT
+-	select HANDLE_DOMAIN_IRQ
+ 	select HAVE_ARCH_AUDITSYSCALL
+ 	select HAVE_ARCH_JUMP_LABEL if !XIP_KERNEL
+ 	select HAVE_ARCH_JUMP_LABEL_RELATIVE if !XIP_KERNEL
+diff --git a/drivers/irqchip/irq-riscv-intc.c b/drivers/irqchip/irq-riscv-intc.c
+index 8017f6d32d52..b65bd8878d4f 100644
+--- a/drivers/irqchip/irq-riscv-intc.c
++++ b/drivers/irqchip/irq-riscv-intc.c
+@@ -37,7 +37,7 @@ static asmlinkage void riscv_intc_irq(struct pt_regs *regs)
+ 		break;
+ #endif
+ 	default:
+-		handle_domain_irq(intc_domain, cause, regs);
++		generic_handle_domain_irq(intc_domain, cause);
+ 		break;
+ 	}
+ }
+diff --git a/drivers/irqchip/irq-sun4i.c b/drivers/irqchip/irq-sun4i.c
+index 8a315d6a3399..dd506ebfdacb 100644
+--- a/drivers/irqchip/irq-sun4i.c
++++ b/drivers/irqchip/irq-sun4i.c
+@@ -195,7 +195,7 @@ static void __exception_irq_entry sun4i_handle_irq(struct pt_regs *regs)
+ 		return;
+ 
+ 	do {
+-		handle_domain_irq(irq_ic_data->irq_domain, hwirq, regs);
++		generic_handle_domain_irq(irq_ic_data->irq_domain, hwirq);
+ 		hwirq = readl(irq_ic_data->irq_base +
+ 				SUN4I_IRQ_VECTOR_REG) >> 2;
+ 	} while (hwirq != 0);
+diff --git a/include/linux/irqdesc.h b/include/linux/irqdesc.h
+index 59aea39785bf..93d270ca0c56 100644
+--- a/include/linux/irqdesc.h
++++ b/include/linux/irqdesc.h
+@@ -168,14 +168,7 @@ int generic_handle_irq(unsigned int irq);
+  * conversion failed.
+  */
+ int generic_handle_domain_irq(struct irq_domain *domain, unsigned int hwirq);
+-
+-#ifdef CONFIG_HANDLE_DOMAIN_IRQ
+-int handle_domain_irq(struct irq_domain *domain,
+-		      unsigned int hwirq, struct pt_regs *regs);
+-
+-int handle_domain_nmi(struct irq_domain *domain, unsigned int hwirq,
+-		      struct pt_regs *regs);
+-#endif
++int generic_handle_domain_nmi(struct irq_domain *domain, unsigned int hwirq);
+ #endif
+ 
+ /* Test to see if a driver has successfully requested an irq */
+diff --git a/kernel/irq/Kconfig b/kernel/irq/Kconfig
+index 897dfc552bb0..1b41078222f3 100644
+--- a/kernel/irq/Kconfig
++++ b/kernel/irq/Kconfig
+@@ -97,13 +97,6 @@ config GENERIC_MSI_IRQ_DOMAIN
+ config IRQ_MSI_IOMMU
+ 	bool
+ 
+-config HANDLE_DOMAIN_IRQ
+-	bool
+-
+-# Legacy behaviour; architectures should call irq_{enter,exit}() themselves
+-config HANDLE_DOMAIN_IRQ_IRQENTRY
+-	bool
+-
+ config IRQ_TIMINGS
+ 	bool
+ 
+diff --git a/kernel/irq/irqdesc.c b/kernel/irq/irqdesc.c
+index 7041698a7bff..2267e6527db3 100644
+--- a/kernel/irq/irqdesc.c
++++ b/kernel/irq/irqdesc.c
+@@ -651,7 +651,11 @@ int handle_irq_desc(struct irq_desc *desc)
+  * generic_handle_irq - Invoke the handler for a particular irq
+  * @irq:	The irq number to handle
+  *
+- */
++ * Returns:	0 on success, or -EINVAL if conversion has failed
++ *
++ * 		This function must be called from an IRQ context with irq regs
++ * 		initialized.
++  */
+ int generic_handle_irq(unsigned int irq)
+ {
+ 	return handle_irq_desc(irq_to_desc(irq));
+@@ -661,77 +665,39 @@ EXPORT_SYMBOL_GPL(generic_handle_irq);
+ #ifdef CONFIG_IRQ_DOMAIN
+ /**
+  * generic_handle_domain_irq - Invoke the handler for a HW irq belonging
+- *                             to a domain, usually for a non-root interrupt
+- *                             controller
++ *                             to a domain.
+  * @domain:	The domain where to perform the lookup
+  * @hwirq:	The HW irq number to convert to a logical one
+  *
+  * Returns:	0 on success, or -EINVAL if conversion has failed
+  *
++ * 		This function must be called from an IRQ context with irq regs
++ * 		initialized.
+  */
+ int generic_handle_domain_irq(struct irq_domain *domain, unsigned int hwirq)
+ {
++	WARN_ON_ONCE(!in_irq());
+ 	return handle_irq_desc(irq_resolve_mapping(domain, hwirq));
+ }
+ EXPORT_SYMBOL_GPL(generic_handle_domain_irq);
+ 
+-#ifdef CONFIG_HANDLE_DOMAIN_IRQ
+ /**
+- * handle_domain_irq - Invoke the handler for a HW irq belonging to a domain,
+- *                     usually for a root interrupt controller
++ * generic_handle_domain_nmi - Invoke the handler for a HW nmi belonging
++ *                             to a domain.
+  * @domain:	The domain where to perform the lookup
+  * @hwirq:	The HW irq number to convert to a logical one
+- * @regs:	Register file coming from the low-level handling code
+- *
+- * 		This function must be called from an IRQ context.
+  *
+  * Returns:	0 on success, or -EINVAL if conversion has failed
+- */
+-int handle_domain_irq(struct irq_domain *domain,
+-		      unsigned int hwirq, struct pt_regs *regs)
+-{
+-	struct pt_regs *old_regs = set_irq_regs(regs);
+-	int ret;
+-
+-	/*
+-	 * IRQ context needs to be setup earlier.
+-	 */
+-	WARN_ON(!in_irq());
+-
+-	ret = generic_handle_domain_irq(domain, hwirq);
+-
+-	set_irq_regs(old_regs);
+-	return ret;
+-}
+-
+-/**
+- * handle_domain_nmi - Invoke the handler for a HW irq belonging to a domain
+- * @domain:	The domain where to perform the lookup
+- * @hwirq:	The HW irq number to convert to a logical one
+- * @regs:	Register file coming from the low-level handling code
+- *
+- *		This function must be called from an NMI context.
+  *
+- * Returns:	0 on success, or -EINVAL if conversion has failed
+- */
+-int handle_domain_nmi(struct irq_domain *domain, unsigned int hwirq,
+-		      struct pt_regs *regs)
++ * 		This function must be called from an NMI context with irq regs
++ * 		initialized.
++ **/
++int generic_handle_domain_nmi(struct irq_domain *domain, unsigned int hwirq)
+ {
+-	struct pt_regs *old_regs = set_irq_regs(regs);
+-	int ret;
+-
+-	/*
+-	 * NMI context needs to be setup earlier in order to deal with tracing.
+-	 */
+-	WARN_ON(!in_nmi());
+-
+-	ret = generic_handle_domain_irq(domain, hwirq);
+-
+-	set_irq_regs(old_regs);
+-	return ret;
++	WARN_ON_ONCE(!in_nmi());
++	return handle_irq_desc(irq_resolve_mapping(domain, hwirq));
+ }
+ #endif
+-#endif
+ 
+ /* Dynamic interrupt handling */
+ 
+-- 
+2.20.1
+

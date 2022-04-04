@@ -1,0 +1,44 @@
+From 692f382f2d8e87d65e19ef44f7c1794ceac14126 Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sat, 13 Nov 2021 11:39:01 -0600
+Subject: [PATCH 035/124] bus: sun50i-de2: Prevent driver from being unbound
+
+Currently, the driver can be unbound via sysfs. Because it does not call
+of_platform_depopulate, unbinding the driver will ...
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/bus/sun50i-de2.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/drivers/bus/sun50i-de2.c b/drivers/bus/sun50i-de2.c
+index 672518741f86..740957de1077 100644
+--- a/drivers/bus/sun50i-de2.c
++++ b/drivers/bus/sun50i-de2.c
+@@ -25,12 +25,6 @@ static int sun50i_de2_bus_probe(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
+-static int sun50i_de2_bus_remove(struct platform_device *pdev)
+-{
+-	sunxi_sram_release(&pdev->dev);
+-	return 0;
+-}
+-
+ static const struct of_device_id sun50i_de2_bus_of_match[] = {
+ 	{ .compatible = "allwinner,sun50i-a64-de2", },
+ 	{ /* sentinel */ }
+@@ -38,9 +32,9 @@ static const struct of_device_id sun50i_de2_bus_of_match[] = {
+ 
+ static struct platform_driver sun50i_de2_bus_driver = {
+ 	.probe = sun50i_de2_bus_probe,
+-	.remove = sun50i_de2_bus_remove,
+ 	.driver = {
+ 		.name = "sun50i-de2-bus",
++		.suppress_bind_attrs = true,
+ 		.of_match_table = sun50i_de2_bus_of_match,
+ 	},
+ };
+-- 
+2.20.1
+

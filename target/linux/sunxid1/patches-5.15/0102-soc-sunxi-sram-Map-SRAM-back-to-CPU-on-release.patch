@@ -1,0 +1,45 @@
+From 08c2a7e1ffff8ff09f7159e8eeab246a6ee1220b Mon Sep 17 00:00:00 2001
+From: Samuel Holland <samuel@sholland.org>
+Date: Sun, 11 Jul 2021 10:56:17 -0500
+Subject: [PATCH 102/124] soc: sunxi: sram: Map SRAM back to CPU on release
+
+Signed-off-by: Samuel Holland <samuel@sholland.org>
+---
+ drivers/soc/sunxi/sunxi_sram.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/soc/sunxi/sunxi_sram.c b/drivers/soc/sunxi/sunxi_sram.c
+index f3d3f9259df9..bb8d8d44a621 100644
+--- a/drivers/soc/sunxi/sunxi_sram.c
++++ b/drivers/soc/sunxi/sunxi_sram.c
+@@ -265,17 +265,26 @@ int sunxi_sram_release(struct device *dev)
+ {
+ 	const struct sunxi_sram_data *sram_data;
+ 	struct sunxi_sram_desc *sram_desc;
++	unsigned int device;
++	u32 val, mask;
+ 
+ 	if (!dev || !dev->of_node)
+ 		return -EINVAL;
+ 
+-	sram_data = sunxi_sram_of_parse(dev->of_node, NULL);
++	sram_data = sunxi_sram_of_parse(dev->of_node, &device);
+ 	if (IS_ERR(sram_data))
+ 		return -EINVAL;
+ 
+ 	sram_desc = to_sram_desc(sram_data);
+ 
+ 	spin_lock(&sram_lock);
++	mask = GENMASK(sram_data->offset + sram_data->width - 1,
++		       sram_data->offset);
++	val = readl(base + sram_data->reg);
++	val &= ~mask;
++	writel(val | ((~device << sram_data->offset) & mask),
++	       base + sram_data->reg);
++
+ 	sram_desc->claimed = false;
+ 	spin_unlock(&sram_lock);
+ 
+-- 
+2.20.1
+
