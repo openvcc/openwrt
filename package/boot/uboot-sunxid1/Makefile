@@ -33,8 +33,16 @@ define U-Boot/nezha
   BUILD_DEVICES:=nezha
 endef
 
+define U-Boot/openv-d100
+  NAME:=OpenV D100
+  OPENSBI:=generic
+  DEPENDS:=+opensbi-d1_generic +sun20spl
+  BUILD_DEVICES:=openv-d100
+endef
+
 UBOOT_TARGETS := \
-	nezha
+	nezha \
+	openv-d100
 
 UBOOT_MAKE_FLAGS += \
 	OPENSBI=$(STAGING_DIR_IMAGE)/fw_dynamic-${OPENSBI}.bin

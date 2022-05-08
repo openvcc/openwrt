@@ -27,7 +27,7 @@ define Build/riscv-sdcard
 		$(IMAGE_ROOTFS) \
 		$(CONFIG_SUNXID1_SD_BOOT_PARTSIZE) \
 		$(CONFIG_TARGET_ROOTFS_PARTSIZE) \
-		$(STAGING_DIR_IMAGE)/nezha-u-boot.toc1 \
+		$(STAGING_DIR_IMAGE)/$(DEVICE_NAME)-u-boot.toc1 \
 		$(STAGING_DIR_IMAGE)/boot0_sdcard_sun20iw1p1.bin
 endef
 
@@ -65,5 +65,16 @@ define Image/Build
 endef
 
 TARGET_DEVICES += nezha
+
+define Device/openv-d100
+  KERNEL = kernel-bin | fit none $$(DTS_DIR)/$$(DEVICE_DTS).dtb
+  KERNEL_NAME := Image
+  DEVICE_VENDOR := OpenV
+  DEVICE_MODEL := D100
+  DEVICE_DTS := allwinner/sun20i-d1-openv-d100
+  UBOOT := openv-d100
+endef
+
+TARGET_DEVICES += openv-d100
 
 $(eval $(call BuildImage))
