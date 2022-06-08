@@ -1,0 +1,118 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
+@@ -948,10 +948,13 @@ static int sun8i_dwmac_set_syscon(struct
+ 		/* Force EPHY xtal frequency to 24MHz. */
+ 		reg |= H3_EPHY_CLK_SEL;
+ 
+-		ret = of_mdio_parse_addr(dev, plat->phy_node);
+-		if (ret < 0) {
+-			dev_err(dev, "Could not parse MDIO addr\n");
+-			return ret;
++		if(!of_phy_is_fixed_link(plat->phy_node))
++		{
++			ret = of_mdio_parse_addr(dev, plat->phy_node);
++			if (ret < 0) {
++				dev_err(dev, "Could not parse MDIO addr\n");
++				return ret;
++			}
+ 		}
+ 		/* of_mdio_parse_addr returns a valid (0 ~ 31) PHY
+ 		 * address. No need to mask it again.
+@@ -1267,9 +1270,9 @@ static int sun8i_dwmac_probe(struct plat
+ 			goto dwmac_mux;
+ 		}
+ 	} else {
+-		ret = sun8i_dwmac_reset(priv);
+-		if (ret)
+-			goto dwmac_remove;
++		//ret = sun8i_dwmac_reset(priv);
++		//if (ret)
++		//	goto dwmac_remove;
+ 	}
+ 
+ 	return 0;
+--- a/arch/riscv/boot/dts/allwinner/sun20i-d1-openv-d100.dts
++++ b/arch/riscv/boot/dts/allwinner/sun20i-d1-openv-d100.dts
+@@ -81,6 +81,14 @@
+                 compatible = "mmc-pwrseq-simple";
+                 reset-gpios = <&gpio 6 12 GPIO_ACTIVE_LOW>; /* PG12 */
+         };
++
++	rtl8367{
++                status = "okay";
++                compatible = "rtk,rtk8367";
++                mdio = <&mdio>;
++                gsw,reset-pin = <&gpio 4 16 GPIO_ACTIVE_HIGH>; //PE16
++		cpu_port = <5>;
++        };
+ };
+ 
+ &codec {
+@@ -229,13 +237,6 @@
+         };
+ };
+ 
+-&mdio {
+-        ext_rgmii_phy: ethernet-phy@1 {
+-                compatible = "ethernet-phy-ieee802.3-c22";
+-                reg = <1>;
+-        };
+-};
+-
+ &mmc0 {
+         bus-width = <4>;
+         cd-gpios = <&gpio 5 6 GPIO_ACTIVE_HIGH>; /* PF6 */
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -13,7 +13,7 @@
+   Support available at:
+ 	https://bugzilla.stlinux.com/
+ *******************************************************************************/
+-
++#define DEBUG
+ #include <linux/clk.h>
+ #include <linux/kernel.h>
+ #include <linux/interrupt.h>
+@@ -1232,9 +1232,13 @@ static int stmmac_init_phy(struct net_de
+ 
+ 	node = priv->plat->phylink_node;
+ 
++	printk("%s() %d\n", __FUNCTION__,__LINE__);
++
+ 	if (node)
+ 		ret = phylink_of_phy_connect(priv->phylink, node, 0);
+ 
++	printk("%s() %d\n", __FUNCTION__,__LINE__);
++
+ 	/* Some DT bindings do not set-up the PHY handle. Let's try to
+ 	 * manually parse it
+ 	 */
+@@ -1251,6 +1255,8 @@ static int stmmac_init_phy(struct net_de
+ 		ret = phylink_connect_phy(priv->phylink, phydev);
+ 	}
+ 
++	printk("%s() %d\n", __FUNCTION__,__LINE__);
++
+ 	if (!priv->plat->pmt) {
+ 		struct ethtool_wolinfo wol = { .cmd = ETHTOOL_GWOL };
+ 
+@@ -1258,6 +1264,8 @@ static int stmmac_init_phy(struct net_de
+ 		device_set_wakeup_capable(priv->device, !!wol.supported);
+ 	}
+ 
++	printk("%s() %d\n", __FUNCTION__,__LINE__);
++
+ 	return ret;
+ }
+ 
+@@ -1281,7 +1289,10 @@ static int stmmac_phy_setup(struct stmma
+ 	phylink = phylink_create(&priv->phylink_config, fwnode,
+ 				 mode, &stmmac_phylink_mac_ops);
+ 	if (IS_ERR(phylink))
++	{
++		printk("%s() %d phylink_create failed! \n",__FUNCTION__,__LINE__);
+ 		return PTR_ERR(phylink);
++	}
+ 
+ 	if (priv->hw->xpcs)
+ 		phylink_set_pcs(phylink, &priv->hw->xpcs->pcs);

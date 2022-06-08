@@ -1,0 +1,11 @@
+--- a/drivers/net/phy/swconfig.c
++++ b/drivers/net/phy/swconfig.c
+@@ -1181,6 +1181,8 @@ unregister_switch(struct switch_dev *dev
+ 	kfree(dev->portbuf);
+ 	mutex_lock(&dev->sw_mutex);
+ 	swconfig_lock();
++	if(swdev_id > 0)
++		swdev_id--;
+ 	list_del(&dev->dev_list);
+ 	swconfig_unlock();
+ 	mutex_unlock(&dev->sw_mutex);
