@@ -1,0 +1,6 @@
+config RTL836x
+    tristate "driver for rtl836x"
+    help
+    This is a driver for rtl 836x switch 
+    If unsure, say N.
+
