@@ -235,7 +235,7 @@ struct rtl8367_vlan_info {
 };
 
 
-unsigned int rtl8367c_port_id[RTL8367C_NUM_PORTS]={0,1,2,3,4,EXT_PORT1,EXT_PORT0};
+unsigned int rtl8367c_port_id[RTL8367C_NUM_PORTS]={0,1,2,3,4,EXT_PORT0,EXT_PORT1};
 unsigned int rtl8363nb_port_id[RTL8363NB_NUM_PORTS]={1,3,EXT_PORT0};
 
 /*rtl8367c  proprietary switch API wrapper */
@@ -321,7 +321,7 @@ static  struct rtl8367_mib_counter  rtl8367c_mib_counters[] = {
 static inline unsigned int rtl8367c_portmask_phy_to_sw(rtk_portmask_t phy_portmask)
 {
 	int i;
-	for (i = 0; i < RTL8367C_NUM_PORTS; i++) {
+	for (i = 0; i < 32; i++) {
 		if(RTK_PORTMASK_IS_PORT_SET(phy_portmask,(i))) {
 			RTK_PORTMASK_PORT_CLEAR(phy_portmask,(i));
 			RTK_PORTMASK_PORT_SET(phy_portmask,i);
@@ -395,7 +395,7 @@ static int rtl8367c_set_vlan( unsigned short vid, u32 mbr, u32 untag, u8 fid)
 
 	memset(&vlan_cfg, 0x00, sizeof(rtk_vlan_cfg_t));	
 
-	for (i = 0; i < RTL8367C_NUM_PORTS; i++) {
+	for (i = 0; i < 32; i++) {
 		if (mbr & (1 << i)) {
 			RTK_PORTMASK_PORT_SET(vlan_cfg.mbr, i);
 			if(untag & (1 << i))

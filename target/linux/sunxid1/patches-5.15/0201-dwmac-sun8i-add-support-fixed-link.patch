@@ -43,7 +43,7 @@
 +                compatible = "rtk,rtk8367";
 +                mdio = <&mdio>;
 +                gsw,reset-pin = <&gpio 4 16 GPIO_ACTIVE_HIGH>; //PE16
-+		cpu_port = <5>;
++		cpuport = <5>;
 +        };
  };
  
