@@ -71,6 +71,7 @@ define Device/openv-d100
   KERNEL_NAME := Image
   DEVICE_VENDOR := OpenV
   DEVICE_MODEL := D100
+  SUPPORTED_DEVICES := openv,openv-d100
   DEVICE_DTS := allwinner/sun20i-d1-openv-d100
   UBOOT := openv-d100
 endef
